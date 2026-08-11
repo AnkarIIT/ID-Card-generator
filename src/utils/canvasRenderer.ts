@@ -3,11 +3,13 @@ import QRCode from 'qrcode';
 import { extractXHandle, formatQrUrl } from './urlUtils';
 import frontImageUrl from '../images/front.png';
 import backImageUrl from '../images/back.jpeg';
+import frontGoldFrameImageUrl from '../images/front_gold_frame.png';
 
 // Cache for generated QR Code images and template backgrounds
 const qrCache = new Map<string, HTMLImageElement>();
 let frontImageCached: HTMLImageElement | null = null;
 let backImageCached: HTMLImageElement | null = null;
+let frontFrameOverlayCached: HTMLImageElement | null = null;
 
 export async function getFrontTemplateImage(): Promise<HTMLImageElement | null> {
   if (frontImageCached) return frontImageCached;
@@ -43,14 +45,36 @@ export async function getBackTemplateImage(): Promise<HTMLImageElement | null> {
   }
 }
 
+/**
+ * Loads the pre-extracted golden portrait-frame overlay derived from front.png.
+ * The overlay holds ONLY the golden frame pixels (RGBA, transparent elsewhere)
+ * and is composited on top of the photo so no photo pixel can ever cover the frame.
+ */
+export async function getFrontFrameOverlayImage(): Promise<HTMLImageElement | null> {
+  if (frontFrameOverlayCached) return frontFrameOverlayCached;
+  try {
+    const img = new Image();
+    img.src = frontGoldFrameImageUrl;
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    });
+    frontFrameOverlayCached = img;
+    return img;
+  } catch (err) {
+    console.error('Failed to load front frame overlay image:', err);
+    return null;
+  }
+}
+
 export async function getQrCodeImage(url: string, handleFallback?: string): Promise<HTMLImageElement | null> {
   const targetUrl = formatQrUrl(url, handleFallback);
   if (qrCache.has(targetUrl)) return qrCache.get(targetUrl)!;
 
   try {
     const dataUrl = await QRCode.toDataURL(targetUrl, {
-      margin: 1,
-      width: 360,
+      margin: 2,
+      width: 372, // QR code size 2% smaller
       color: {
         dark: '#1e1b18',
         light: '#fbf3dc',
@@ -82,28 +106,23 @@ export const CARD_LAYOUT = {
 
   portrait: {
     x: 513,
-    y: 183,
-    width: 402,
-    height: 667,
-    textSafeArea: { x: 513, y: 183, width: 402, height: 667 },
+    y: 110,
+    width: 397,
+    height: 730,
+    textSafeArea: { x: 513, y: 110, width: 397, height: 730 },
     shape: 'inner-pink-arch',
     path: (ctx: CanvasRenderingContext2D) => {
-      const x = 513;
-      const y = 183;
-      const w = 402;
-      const h = 667;
-
       ctx.beginPath();
-      // Top arch curve
-      ctx.moveTo(x, y + 110);
-      ctx.bezierCurveTo(x + 10, y + 25, x + w / 2 - 45, y, x + w / 2, y);
-      ctx.bezierCurveTo(x + w / 2 + 45, y, x + w - 10, y + 25, x + w, y + 110);
-      // Right edge down
-      ctx.lineTo(x + w, y + h - 25);
-      ctx.bezierCurveTo(x + w, y + h - 8, x + w / 2 + 50, y + h, x + w / 2, y + h);
-      ctx.bezierCurveTo(x + w / 2 - 50, y + h, x, y + h - 8, x, y + h - 25);
-      // Left edge back up
-      ctx.lineTo(x, y + 110);
+      // Top arch: apex (667,110) widening down to the frame's inner side edges.
+      // Left arm inner edge ~x=513 (y=240+), right arm inner edge ~x=910 (y=390+).
+      ctx.moveTo(513, 240);
+      ctx.bezierCurveTo(545, 195, 620, 140, 667, 110);
+      ctx.bezierCurveTo(715, 118, 785, 165, 845, 235);
+      ctx.bezierCurveTo(878, 275, 900, 320, 910, 390);
+      // Right edge down to the frame's inner bottom
+      ctx.lineTo(910, 840);
+      // Bottom edge
+      ctx.lineTo(513, 840);
       ctx.closePath();
     },
   },
@@ -495,6 +514,7 @@ export async function renderGraphicOnCanvas(
 
   const frontTemplate = await getFrontTemplateImage();
   const backTemplate = await getBackTemplateImage();
+  const frontFrameOverlay = await getFrontFrameOverlayImage();
 
   let qrImg = qrImage || null;
   if (!qrImg && config.format === 'badge' && (config.side === 'back' || config.side === 'both')) {
@@ -522,7 +542,7 @@ export async function renderGraphicOnCanvas(
       // Draw Front Card on Left
       ctx.save();
       ctx.translate(32, 0);
-      renderFrontBadge(ctx, 1024, 1536, config, userImage, frontTemplate, isExport);
+      renderFrontBadge(ctx, 1024, 1536, config, userImage, frontTemplate, isExport, frontFrameOverlay);
       ctx.restore();
 
       // Draw Back Card on Right
@@ -540,7 +560,7 @@ export async function renderGraphicOnCanvas(
       canvas.width = 1024;
       canvas.height = 1536;
       ctx.clearRect(0, 0, 1024, 1536);
-      renderFrontBadge(ctx, 1024, 1536, config, userImage, frontTemplate, isExport);
+      renderFrontBadge(ctx, 1024, 1536, config, userImage, frontTemplate, isExport, frontFrameOverlay);
     }
   }
 }
@@ -690,7 +710,8 @@ function renderFrontBadge(
   config: CardConfig,
   userImage: HTMLImageElement | null,
   templateImage?: HTMLImageElement | null,
-  isExport: boolean = false
+  isExport: boolean = false,
+  frameOverlay?: HTMLImageElement | null
 ) {
   const p = getThemePalette(config.themeStyle);
   const b = config.builder;
@@ -722,6 +743,14 @@ function renderFrontBadge(
     ctx.fillText('YOUR PHOTO HERE', CARD_LAYOUT.portrait.x + CARD_LAYOUT.portrait.width / 2, CARD_LAYOUT.portrait.y + CARD_LAYOUT.portrait.height / 2);
   }
   ctx.restore();
+
+  // STEP 4: Restore the golden portrait frame on top.
+  // The overlay contains ONLY the frame's pixels (transparent elsewhere), so it
+  // guarantees NO photo pixel can ever appear on/outside the golden frame while
+  // keeping the frame fully intact on top of the photo.
+  if (templateImage && frameOverlay) {
+    ctx.drawImage(frameOverlay, 0, 0, w, h);
+  }
 
   // STEP 5: Draw dynamic text inside textSafeAreas
 
@@ -831,7 +860,11 @@ function renderFrontBadge(
 }
 
 /**
- * Format B - BACK SIDE: Vintage Goa Hacker House QR & Connect Pass
+ * Format B - BACK SIDE: QR Code Connect Pass (uses back.jpeg template)
+ * The back.jpeg is a QR code placeholder with:
+ * - Light tan/beige background
+ * - Dashed dark reddish-pink border  
+ * - "YOUR QR CODE HERE" text in center
  */
 function renderBackBadge(
   ctx: CanvasRenderingContext2D,
@@ -841,68 +874,52 @@ function renderBackBadge(
   qrImage: HTMLImageElement | null,
   templateImage?: HTMLImageElement | null
 ) {
-  const p = getThemePalette(config.themeStyle);
   const b = config.builder;
 
+  // Draw back.jpeg template as background if available
   if (templateImage) {
     ctx.drawImage(templateImage, 0, 0, w, h);
   } else {
-    ctx.fillStyle = p.bgOuter;
+    // Fallback: solid tan/beige background with border
+    ctx.fillStyle = '#fbf3dc'; // Light tan/beige
     ctx.fillRect(0, 0, w, h);
-    drawVintageBorderFrame(ctx, 0, 0, w, h, p);
 
-    // Header & Headline (only for fallback when template image is not present)
     ctx.save();
-    ctx.textAlign = 'center';
-
-    ctx.font = '800 24px sans-serif';
-    ctx.fillStyle = p.yellowText;
-    ctx.fillText('HACKER HOUSE', w / 2, 60);
-
-    ctx.font = '900 72px sans-serif';
-    ctx.fillStyle = p.yellowText;
-    ctx.fillText('GOA, INDIA', w / 2, 130);
-
-    ctx.font = '800 24px sans-serif';
-    ctx.fillStyle = p.creamText;
-    ctx.fillText('28  -  31 OCT 2026', w / 2, 170);
-
-    const headlineStr = b.backHeadline || 'चलो बनाते हैं बवाल वाले आईडियाज़';
-    if (headlineStr && headlineStr.trim()) {
-      ctx.font = '900 36px sans-serif';
-      ctx.fillStyle = p.yellowText;
-      ctx.fillText(`✨ ${headlineStr.trim()} ✨`, w / 2, 240);
-    }
+    ctx.strokeStyle = '#8b0000'; // Dark reddish-pink
+    ctx.setLineDash([8, 8]); // Dashed line
+    ctx.lineWidth = 3;
+    ctx.strokeRect(16, 16, w - 32, h - 32);
     ctx.restore();
   }
 
-  // Draw QR Code to perfectly fill the template's red-dotted box region
-  const cardX = 102;
-  const cardY = 178;
-  const cardW = 820;
-  const cardH = 726;
-
-  ctx.save();
-  // Clean white card background covering the 'YOUR QR CODE HERE' template text
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-  ctx.shadowBlur = 12;
-  drawRoundedRect(ctx, cardX, cardY, cardW, cardH, 20);
-  ctx.fill();
-
-  const qrSize = 630;
-  const qrX = cardX + (cardW - qrSize) / 2;
-  const qrY = cardY + (cardH - qrSize) / 2;
+  // QR Code Position for 1024x1536 canvas
+  // QR code must fit entirely within the placeholder box - smaller size
+  const qrSize = 372; // 2% smaller
+  const qrX = (w - qrSize) / 2;
+  const qrY = (h - qrSize) / 2;
 
   if (qrImage) {
+    // Draw the actual QR code on top of the template
+    // With a rounded corner effect (radius 50px)
+    ctx.save();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#8b0000'; // Dark reddish-pink border color
+    drawRoundedRect(ctx, qrX - 50, qrY - 50, qrSize + 100, qrSize + 100, 50);
+    ctx.stroke();
+    ctx.restore();
+    
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
   } else {
-    ctx.fillStyle = '#1e1b18';
-    ctx.font = 'bold 36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('YOUR QR CODE HERE', cardX + cardW / 2, cardY + cardH / 2);
+    // Only show placeholder text if QR code is not available AND no template
+    if (!templateImage) {
+      ctx.fillStyle = '#1e1b18'; // Dark green/near-black
+      ctx.font = 'bold 36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('YOUR QR CODE', w / 2, h / 2 - 20);
+      ctx.fillText('HERE', w / 2, h / 2 + 40);
+    }
   }
-  ctx.restore();
 }
 
 function drawVintageBorderFrame(
