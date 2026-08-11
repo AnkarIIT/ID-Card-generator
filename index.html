@@ -1,114 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#000000">
-    <title>HH Goa 2026 • Frame Your Builder Identity</title>
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/reset.css">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/animations.css">
-    <link rel="stylesheet" href="css/responsive.css">
-</head>
-<body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header__brand">
-            <div class="header__logo">HH GOA<br>2026</div>
-            <div class="header__hashtag">#FrameInGoa</div>
-        </div>
-    </header>
-
-    <main class="main">
-        <!-- Landing Screen -->
-        <section class="screen screen--landing" id="screen-landing">
-            <div class="hero">
-                <div class="hero__label">BUILDER ACTIVATION</div>
-                <h1 class="hero__title">FRAME <span class="hero__accent">YOUR</span><br>IDENTITY.</h1>
-                <p class="hero__subtitle">Create your HH Goa 2026 builder identity<br>and take it with you to Goa.</p>
-                <div class="hero__meta">
-                    <span>NO LOGIN</span>
-                    <span>•</span>
-                    <span>INSTANT</span>
-                    <span>•</span>
-                    <span>#FRAMEINGOA</span>
-                </div>
-                <div class="upload-wrapper">
-                    <div class="upload-frame" id="upload-area">
-                        <div class="frame-corner-top-left"></div>
-                        <div class="frame-corner-top-right"></div>
-                        <div class="frame-corner-bottom-left"></div>
-                        <div class="frame-corner-bottom-right"></div>
-                        <div class="upload-label">PHOTO INPUT</div>
-                        <div class="upload-icon">+</div>
-                        <div class="upload-prompt">DROP YOUR PHOTO</div>
-                        <div class="upload-hint">or <button class="upload-btn" id="upload-btn">CHOOSE PHOTO →</button></div>
-                        <div class="upload-format">JPG · PNG</div>
-                        <input type="file" id="file-input" accept=".jpg,.jpeg,.png">
-                        <div class="crosshair"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Builder Screen -->
-        <section class="screen screen--builder" id="screen-builder" hidden>
-            <h2 class="builder-title">IDENTITY BUILDER</h2>
-            <div class="builder-layout">
-                <div class="builder-preview">
-                    <div class="card-preview-container">
-                        <canvas id="card-preview"></canvas>
-                    </div>
-                </div>
-                <div class="builder-form">
-                    <div class="input-group">
-                        <label for="input-name" class="input-label">NAME</label>
-                        <input type="text" id="input-name" class="input-field" placeholder="Ankar" maxlength="30">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-role" class="input-label">ROLE</label>
-                        <input type="text" id="input-role" class="input-field" placeholder="AI Engineer" maxlength="40">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-stack" class="input-label">STACK</label>
-                        <input type="text" id="input-stack" class="input-field" placeholder="Python • TensorFlow • PyTorch" maxlength="60">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-building" class="input-label">CURRENTLY BUILDING</label>
-                        <input type="text" id="input-building" class="input-field" placeholder="AI tools that make life easier" maxlength="80">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-sidequest" class="input-label">SIDE QUEST</label>
-                        <input type="text" id="input-sidequest" class="input-field" placeholder="Startups • Travel • Anime" maxlength="60">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-sleep" class="input-label">SLEEP STATUS</label>
-                        <input type="text" id="input-sleep" class="input-field" placeholder="3:16 AM — Still hacking" maxlength="40">
-                    </div>
-                    <button class="btn btn-primary btn-block" id="generate-btn">GENERATE MY ID →</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Result Screen -->
-        <section class="screen screen--result" id="screen-result" hidden>
-            <h1 class="hero__title result-title">YOU'RE <span class="hero__accent">FRAME-READY.</span></h1>
-            <div class="result-preview">
-                <div class="card-preview-container">
-                    <canvas id="card-result"></canvas>
-                </div>
-            </div>
-            <div class="result-actions">
-                <button class="btn btn-secondary btn-block" id="download-btn"><span class="download-icon">⬇</span> DOWNLOAD</button>
-                <button class="btn btn-primary btn-block" id="share-btn"><span class="share-icon">🔗</span> SHARE TO X</button>
-                <button class="btn btn-outline btn-block" id="new-btn">CREATE ANOTHER</button>
-            </div>
-        </section>
-    </main>
-
-    <!-- SAM2 ONNX Person Segmentation (runs in-browser) -->
-    <script type="module" src="js/app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
+
