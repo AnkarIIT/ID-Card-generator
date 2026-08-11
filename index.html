@@ -23,7 +23,7 @@
 
     <main class="main">
         <!-- Landing Screen -->
-        <section class="screen" id="screen-landing" hidden>
+        <section class="screen screen--landing" id="screen-landing">
             <div class="hero">
                 <div class="hero__label">BUILDER ACTIVATION</div>
                 <h1 class="hero__title">FRAME <span class="hero__accent">YOUR</span><br>IDENTITY.</h1>
@@ -46,7 +46,7 @@
                         <div class="upload-prompt">DROP YOUR PHOTO</div>
                         <div class="upload-hint">or <button class="upload-btn" id="upload-btn">CHOOSE PHOTO →</button></div>
                         <div class="upload-format">JPG · PNG · HEIC</div>
-                        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.heic" multiple hidden>
+                        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.heic" multiple>
                         <div class="crosshair"></div>
                     </div>
                 </div>
@@ -54,7 +54,7 @@
         </section>
 
         <!-- Builder Screen -->
-        <section class="screen screen--builder" id="screen-builder">
+        <section class="screen screen--builder" id="screen-builder" hidden>
             <h2 class="builder-title">IDENTITY BUILDER</h2>
             <div class="builder-layout">
                 <div class="builder-preview">
@@ -87,22 +87,6 @@
                         <label for="input-sleep" class="input-label">SLEEP STATUS</label>
                         <input type="text" id="input-sleep" class="input-field" placeholder="3:16 AM — Still hacking" maxlength="40">
                     </div>
-                    <div class="input-group">
-                        <label for="input-chaos" class="input-label">CHAOS LEVEL</label>
-                        <input type="text" id="input-chaos" class="input-field" placeholder="85%" maxlength="10">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-powered" class="input-label">POWERED BY</label>
-                        <input type="text" id="input-powered" class="input-field" placeholder="Chai + Code" maxlength="30">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-key" class="input-label">MOST USED KEY</label>
-                        <input type="text" id="input-key" class="input-field" placeholder="CTRL + Z" maxlength="20">
-                    </div>
-                    <div class="input-group">
-                        <label for="input-error" class="input-label">FAVOURITE ERROR</label>
-                        <input type="text" id="input-error" class="input-field" placeholder="404" maxlength="10">
-                    </div>
                     <button class="btn btn-primary btn-block" id="generate-btn">GENERATE MY ID →</button>
                 </div>
             </div>
@@ -124,6 +108,7 @@
         </section>
     </main>
 
-    <script src="js/app.js"></script>
+    <!-- IMG.LY Background Removal Library -->
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
