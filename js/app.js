@@ -1,6 +1,6 @@
 import { removeBackground, initSAM } from './services/sam2.js';
 import { renderCard } from './services/cardGenerator.js';
-import { fitCutout, clipPortraitArch } from './services/portraitFitter.js';
+import { CARD_LAYOUT, buildArchMask, fitCutout } from './services/portraitFitter.js';
 
 let templateImg = null;
 const state = {
@@ -80,9 +80,19 @@ async function processFile(file) {
 
         state.cutout = result.image;
         state.mask = result.mask || null;
+        state.bounds = result.bounds || null;
 
         console.log('[CUTOUT] Final cutout:', result.image.width, 'x', result.image.height);
         console.log('[BOUNDS] Detected bounds:', result.bounds);
+
+        console.log('[RMBG/SAM2]', JSON.stringify({
+            source: [originalImg.naturalWidth, originalImg.naturalHeight],
+            mask: result.mask ? [result.mask.width, result.mask.height] : null,
+            subjectBounds: result.bounds,
+            cutout: [result.image.width, result.image.height],
+            targetPortrait: [CARD_LAYOUT.portrait.x, CARD_LAYOUT.portrait.y,
+                CARD_LAYOUT.portrait.width, CARD_LAYOUT.portrait.height]
+        }));
 
         state.bgRemovalStatus = 'ready';
         showPhotoPreview(originalImg, result.image, result.bounds);
@@ -366,12 +376,17 @@ window.toggleSAMDebug = () => {
     const archCanvas = draw(1024, 1536);
     const actx = archCanvas.getContext('2d');
     if (templateImg) actx.drawImage(templateImg, 0, 0, 1024, 1536);
-    actx.save();
-    clipPortraitArch(actx);
-    actx.clip();
-    const pos = fitCutout(state.cutout);
-    actx.drawImage(state.cutout, pos.x, pos.y, pos.w, pos.h);
-    actx.restore();
+
+    const arch = buildArchMask(templateImg);
+    const portrait = CARD_LAYOUT.portrait;
+    const pos = fitCutout(state.cutout, arch);
+
+    const layer = draw(portrait.width, portrait.height);
+    const lctx = layer.getContext('2d');
+    lctx.drawImage(state.cutout, pos.x - portrait.x, pos.y - portrait.y, pos.w, pos.h);
+    lctx.globalCompositeOperation = 'destination-in';
+    lctx.drawImage(arch.canvas, 0, 0);
+    actx.drawImage(layer, portrait.x, portrait.y);
     archCanvas.style.cssText = 'width:auto;height:320px;';
 
     const header = document.createElement('div');

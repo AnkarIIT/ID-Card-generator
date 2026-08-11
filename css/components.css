@@ -368,7 +368,7 @@
 
 .card-preview-container {
     width: min(100%, 320px);
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 2 / 3;
     max-width: 100%;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--color-frame);

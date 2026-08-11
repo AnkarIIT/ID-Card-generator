@@ -1,45 +1,58 @@
-import { CARD_LAYOUT, fitCutout, clipPortraitArch } from './portraitFitter.js';
+import { CARD_LAYOUT, buildArchMask, fitCutout } from './portraitFitter.js';
 
-function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
-    const lines = text.split('\n');
-    let currentY = y;
-
-    lines.forEach(line => {
-        const words = line.split(' ');
-        let lineText = '';
-
-        words.forEach(word => {
-            const testText = lineText ? lineText + ' ' + word : word;
-            if (ctx.measureText(testText).width > maxWidth && lineText) {
-                ctx.fillText(lineText, x, currentY);
-                lineText = word;
-                currentY += lineHeight;
-            } else {
-                lineText = testText;
-            }
-        });
-
-        if (lineText) {
-            ctx.fillText(lineText, x, currentY);
-        }
-        currentY += lineHeight;
-    });
-}
-
-function drawText(ctx, field, value) {
+export function drawText(ctx, field, value) {
     const f = CARD_LAYOUT.fields[field];
     if (!f) return;
 
+    const text = String(value ?? '');
+    if (!text.trim()) return;
+
+    const padX = 14;
+    const padY = 10;
+    const maxWidth = f.w - padX * 2;
+    const maxHeight = f.h - padY * 2;
+
+    const wrap = (fontSize) => {
+        ctx.font = `bold ${fontSize}px "Arial Black", system-ui, sans-serif`;
+        const out = [];
+        for (const para of text.split('\n')) {
+            const words = para.split(/\s+/).filter(Boolean);
+            let line = '';
+            for (const word of words) {
+                const test = line ? line + ' ' + word : word;
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    out.push(line);
+                    line = word;
+                } else {
+                    line = test;
+                }
+            }
+            if (line) out.push(line);
+        }
+        return out;
+    };
+
+    let fontSize = f.fontSize;
+    let lines = wrap(fontSize);
+    let lineHeight = fontSize * 1.22;
+    while ((lines.length * lineHeight > maxHeight) && fontSize > 10) {
+        fontSize -= 2;
+        lines = wrap(fontSize);
+        lineHeight = fontSize * 1.22;
+    }
+
     ctx.save();
     ctx.fillStyle = '#F5F5F7';
-    ctx.textAlign = 'center';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.font = `bold ${f.fontSize}px system-ui, sans-serif`;
+    ctx.font = `bold ${fontSize}px "Arial Black", system-ui, sans-serif`;
 
-    const centerX = f.x + f.w / 2;
-    const centerY = f.y + f.h / 2;
-
-    drawWrappedText(ctx, value, centerX, centerY, f.w - 20, f.fontSize * 1.3);
+    const x0 = f.x + padX;
+    let y0 = f.y + padY + fontSize / 2;
+    for (const line of lines) {
+        ctx.fillText(line, x0, y0);
+        y0 += lineHeight;
+    }
     ctx.restore();
 }
 
@@ -54,13 +67,25 @@ export function renderCard(canvas, state, templateImg) {
         ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
     }
 
-    if (state.cutout) {
-        ctx.save();
-        const pos = fitCutout(state.cutout);
-        clipPortraitArch(ctx);
-        ctx.clip();
-        ctx.drawImage(state.cutout, pos.x, pos.y, pos.w, pos.h);
-        ctx.restore();
+    if (state.cutout && templateImg) {
+        const arch = buildArchMask(templateImg);
+        const portrait = CARD_LAYOUT.portrait;
+        const pos = fitCutout(state.cutout, arch);
+
+        const layer = document.createElement('canvas');
+        layer.width = portrait.width;
+        layer.height = portrait.height;
+        const lctx = layer.getContext('2d');
+        lctx.drawImage(state.cutout, pos.x - portrait.x, pos.y - portrait.y, pos.w, pos.h);
+        lctx.globalCompositeOperation = 'destination-in';
+        lctx.drawImage(arch.canvas, 0, 0);
+        ctx.drawImage(layer, portrait.x, portrait.y);
+
+        console.log('[CARD] cutout:', state.cutout.width + 'x' + state.cutout.height,
+            '| subjectBounds:', state.bounds && JSON.stringify(state.bounds),
+            '| archInterior:', JSON.stringify(arch.bounds),
+            '| scale:', pos.scale.toFixed(4),
+            '| drawRect:', JSON.stringify({ x: pos.x, y: pos.y, w: pos.w, h: pos.h }));
     }
 
     drawText(ctx, 'name', state.form.name);
