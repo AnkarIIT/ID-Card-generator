@@ -1,10 +1,15 @@
-import { removeBackground } from
-    'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm';
+// Import ONNX-based RMBG-1.4 background removal
+import { removeBackground, resetSession } from
+    './services/backgroundRemoval.js';
 
-/* HH Goa 2026 - IMG.LY Background Removal Integration
+/* HH Goa 2026 - RMBG-1.4 Background Removal Integration
  * 
- * DIAGNOSTIC VERSION - For runtime verification
- * Tests: SharedArrayBuffer, CORS headers, model loading
+ * Backend: briaai/RMBG-1.4 via ONNX Runtime Web
+ * Model: ONNX model directly (bypasses Transformers.js pipeline resolution issues)
+ * Output: Transparent PNG foreground cutout
+ * 
+ * IMPORTANT: The cutout preserves the COMPLETE person.
+ * No body parts are cropped during segmentation.
  */
 
 // Global state
@@ -12,11 +17,27 @@ let templateImg = null;
 const state = {
     photo: null,
     cutout: null,
-    bgRemovalStatus: 'idle', // idle, loading, processing, ready, error
-    debugMode: false
+    bgRemovalStatus: 'idle',
+    debugMode: false,
+    form: {
+        name: "SHASHWAT KUMAR",
+        role: "DESIGNER",
+        stack: "FIGMA • PHOTOSHOP • ILLUSTRATOR • BLENDER • AFTER EFFECTS",
+        builderTitle: "PROFESSIONAL\nजुगाड़ SPECIALIST",
+        building: "खुद को और कुछ धांसू चीजें",
+        sideQuest: "STARTUPS • TRAVEL • ANIME\n3D PRINTS • LUCKNOW FOOD",
+        sleepStatus: "404: NOT FOUND (KAAM > NEEND)",
+        chaos: 82,
+        poweredBy: "CHAI + जुगाड़ + QUESTIONABLE DECISIONS",
+        mostUsedKey: "CTRL + Z",
+        favoriteError: "404"
+    },
+    id: "0X5A7B1"
 };
 
 // Card layout - measured from front.png (1024x1536 canvas)
+// Reference card positions: LEFT COLUMN for personal info, RIGHT COLUMN for stats
+
 const CARD_LAYOUT = {
     width: 1024,
     height: 1536,
@@ -31,19 +52,26 @@ const CARD_LAYOUT = {
         y: 78,
         width: 580,
         height: 750
+    },
+    // Text field positions - LEFT COLUMN (personal info)
+    fields: {
+        name: { x: 55, y: 505, w: 430, h: 200, fontSize: 68 },
+        role: { x: 55, y: 715, w: 430, h: 110, fontSize: 32 },
+        stack: { x: 55, y: 835, w: 430, h: 155, fontSize: 20 },
+        builderTitle: { x: 55, y: 985, w: 430, h: 155, fontSize: 40 },
+        building: { x: 55, y: 1140, w: 430, h: 165, fontSize: 24 },
+        sideQuest: { x: 55, y: 1305, w: 430, h: 135, fontSize: 22 },
+        // RIGHT COLUMN (below portrait)
+        sleepStatus: { x: 535, y: 850, w: 420, h: 130, fontSize: 20 },
+        chaos: { x: 535, y: 1010, w: 420, h: 115, fontSize: 18 },
+        poweredBy: { x: 535, y: 1105, w: 420, h: 135, fontSize: 20 },
+        mostUsedKey: { x: 535, y: 1240, w: 270, h: 110, fontSize: 24 },
+        favoriteError: { x: 535, y: 1355, w: 270, h: 100, fontSize: 36 },
+        id: { x: 540, y: 1470, w: 400, h: 50, fontSize: 24 }
     }
 };
 
 const $ = (id) => document.getElementById(id);
-
-// ============= DIAGNOSTICS =============
-function runDiagnostics() {
-    console.log('[DIAG] === Running Diagnostics ===');
-    console.log('[DIAG] crossOriginIsolated:', window.crossOriginIsolated);
-    console.log('[DIAG] SharedArrayBuffer:', typeof SharedArrayBuffer);
-    console.log('[DIAG] removeBackground:', typeof removeBackground);
-    console.log('[DIAG] RemoveBg module:', removeBackground?.name || 'no name');
-}
 
 // ============= TEMPLATE LOADING =============
 async function loadTemplate() {
@@ -64,183 +92,6 @@ async function loadTemplate() {
     });
 }
 
-// ============= BACKGROUND REMOVAL =============
-async function removeBackgroundFromFile(file) {
-    console.log('[BG] Starting IMG.LY background removal...');
-    console.log('[BG] File:', file.name);
-    console.log('[BG] Size:', file.size);
-    console.log('[BG] Type:', file.type);
-    
-    // Run diagnostics before processing
-    runDiagnostics();
-    
-    try {
-        // First run downloads and caches the WASM model
-        const config = {
-            debug: true,
-            model: 'isnet_fp16',
-            foreground: true,
-            output: {
-                format: 'image/png',
-                type: 'foreground'
-            },
-            progress: (key, current, total) => {
-                console.log(`[IMG.LY] ${key}: ${current}/${total}`);
-            }
-        };
-        
-        console.log('[BG] Config:', JSON.stringify(config, null, 2));
-        
-        const blob = await removeBackground(file, config);
-        
-        console.log('[BG] Result type:', blob?.constructor?.name);
-        console.log('[BG] Blob type:', blob?.type);
-        console.log('[BG] Blob size:', blob?.size);
-        console.log('[IMG.LY] RESULT:', blob);
-        console.log('[IMG.LY] TYPE:', blob?.type);
-        console.log('[IMG.LY] SIZE:', blob?.size);
-        
-        if (!(blob instanceof Blob)) {
-            throw new Error('Background removal returned invalid result - not a Blob');
-        }
-
-        if (!blob.type.includes('png') && !blob.type.includes('image')) {
-            console.warn('[BG] Unexpected blob type:', blob.type);
-        }
-
-        return blob;
-
-    } catch (err) {
-        console.error('[BG] Background removal failed:', err);
-        console.error('[BG] Error name:', err?.name);
-        console.error('[BG] Error message:', err?.message);
-        console.error('[BG] Error stack:', err?.stack);
-        throw err;
-    }
-}
-
-// ============= CONVERT BLOB TO IMAGE =============
-async function blobToImage(blob) {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            URL.revokeObjectURL(url);
-            resolve(img);
-        };
-        img.onerror = (e) => {
-            URL.revokeObjectURL(url);
-            reject(e);
-        };
-        img.src = url;
-    });
-}
-
-// ============= ALPHA CHANNEL VERIFICATION =============
-function verifyAlphaChannel(image) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    ctx.drawImage(image, 0, 0);
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    const w = imageData.width;
-    const h = imageData.height;
-    
-    let minAlpha = 255, maxAlpha = 0;
-    let transparentPixels = 0, opaquePixels = 0;
-    const sampleStep = 8;
-    
-    for (let i = 3; i < data.length; i += 4 * sampleStep * sampleStep) {
-        const alpha = data[i];
-        minAlpha = Math.min(minAlpha, alpha);
-        maxAlpha = Math.max(maxAlpha, alpha);
-        if (alpha < 20) transparentPixels++;
-        if (alpha > 235) opaquePixels++;
-    }
-    
-    const totalSampled = data.length / (4 * sampleStep * sampleStep);
-    const ratio = transparentPixels / totalSampled;
-    
-    console.log('[VERIFY] Alpha range:', minAlpha, '-', maxAlpha);
-    console.log('[VERIFY] Transparent ratio:', Math.round(ratio * 100) + '%');
-    console.log('[VERIFY] Opaque ratio:', Math.round((1 - ratio) * 100) + '%');
-    
-    return {
-        hasTransparency: minAlpha < 20 && ratio > 0.05,
-        minAlpha,
-        maxAlpha,
-        ratio
-    };
-}
-
-// ============= SUBJECT BOUNDS DETECTION =============
-function findSubjectBounds(image) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    ctx.drawImage(image, 0, 0);
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    const w = imageData.width;
-    const h = imageData.height;
-    
-    let minX = w, minY = h, maxX = 0, maxY = 0;
-    let found = false;
-    
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4 + 3; // Alpha channel
-            if (data[i] > 20) {
-                found = true;
-                minX = Math.min(minX, x);
-                minY = Math.min(minY, y);
-                maxX = Math.max(maxX, x);
-                maxY = Math.max(maxY, y);
-            }
-        }
-    }
-    
-    if (!found) {
-        console.log('[BOUNDS] No subject found');
-        return { x: 0, y: 0, w: w, h: h };
-    }
-
-    // Add padding for natural framing
-    const padX = Math.round((maxX - minX) * 0.08);
-    const padY = Math.round((maxY - minY) * 0.12);
-    
-    const bounds = {
-        x: Math.max(0, minX - padX),
-        y: Math.max(0, minY - padY),
-        w: Math.min(w - minX - padX, maxX - minX + padX),
-        h: Math.min(h - minY - padY, maxY - minY + padY)
-    };
-    
-    console.log('[BOUNDS] Subject bounds:', bounds);
-    return bounds;
-}
-
-// ============= CREATE CUTOUT CANVAS =============
-function createCutoutCanvas(image, bounds) {
-    const canvas = document.createElement('canvas');
-    canvas.width = bounds.w;
-    canvas.height = bounds.h;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.clearRect(0, 0, bounds.w, bounds.h);
-    ctx.drawImage(image, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h);
-    
-    return canvas;
-}
-
 // ============= PROCESS FILE =============
 async function processFile(file) {
     console.log('[FILE] Processing:', file.name);
@@ -252,7 +103,7 @@ async function processFile(file) {
     }
     
     try {
-        // Step 1: Load original for reference
+        // Store original for preview
         const originalUrl = URL.createObjectURL(file);
         const originalImg = new Image();
         originalImg.crossOrigin = 'anonymous';
@@ -263,127 +114,119 @@ async function processFile(file) {
         });
         state.photo = { img: originalImg, url: originalUrl };
         
-        // Step 2: Background removal via IMG.LY
-        console.log('[BG] Calling IMG.LY removeBackground()...');
-        const cutoutBlob = await removeBackgroundFromFile(file);
-        console.log('[BG] Got PNG Blob:', cutoutBlob.size, 'bytes');
+        // Background removal with ONNX RMBG
+        const result = await removeBackground(file);
         
-        // Step 3: Convert Blob to Image
-        const cutoutImg = await blobToImage(cutoutBlob);
-        console.log('[CUTOUT] Image ready:', cutoutImg.naturalWidth, 'x', cutoutImg.naturalHeight);
+        // result.image is already the final cutout canvas
+        state.cutout = result.image;
         
-        // Step 4: Verify alpha channel
-        const verification = verifyAlphaChannel(cutoutImg);
-        if (!verification.hasTransparency) {
-            console.warn('[BG] Low transparency detected');
-        }
-        
-        // Step 5: Find subject bounds - DON'T aggressively crop
-        const bounds = findSubjectBounds(cutoutImg);
-        console.log('[BOUNDS] Cropped bounds:', bounds);
-        
-        // Step 6: Create tight cutout canvas
-        const cutoutCanvas = createCutoutCanvas(cutoutImg, bounds);
-        state.cutout = cutoutCanvas;
-        console.log('[CUTOUT] Final cutout:', cutoutCanvas.width, 'x', cutoutCanvas.height);
+        console.log('[CUTOUT] Final cutout:', result.image.width, 'x', result.image.height);
+        console.log('[BOUNDS] Detected bounds:', result.bounds);
         
         state.bgRemovalStatus = 'ready';
-        showPhotoPreview(originalImg, cutoutCanvas);
+        showPhotoPreview(originalImg, result.image, result.bounds);
         
     } catch (err) {
         console.error('[ERROR] Processing failed:', err);
-        state.bgRemovalStatus = 'error';
-        // Show the ACTUAL error for debugging
         showError(`Model error: ${err.message}. Check console for details.`);
     }
 }
 
 // ============= PHOTO PREVIEW =============
-function showPhotoPreview(original, cutout) {
+function showPhotoPreview(original, cutout, bounds) {
     const area = $('upload-area');
     area.innerHTML = '';
     
     if (state.debugMode) {
-        // Debug view: original vs cutout side by side
-        const debugContainer = document.createElement('div');
-        debugContainer.style.display = 'flex';
-        debugContainer.style.flexDirection = 'column';
-        debugContainer.style.gap = '16px';
-        debugContainer.style.marginBottom = '16px';
-        debugContainer.style.flexWrap = 'wrap';
-        debugContainer.style.justifyContent = 'center';
-        debugContainer.style.alignItems = 'center';
-        
-        // Add debug header
-        const debugHeader = document.createElement('div');
-        debugHeader.textContent = 'BACKGROUND REMOVAL TEST';
-        debugHeader.style.color = '#ff6b35';
-        debugHeader.style.fontWeight = 'bold';
-        debugHeader.style.marginBottom = '8px';
-        debugHeader.style.fontSize = '16px';
+        console.log('[DEBUG] state.photo:', state.photo);
+        console.log('[DEBUG] state.cutout:', { 
+            width: state.cutout?.width, 
+            height: state.cutout?.height 
+        });
+        console.log('[DEBUG] bounds:', bounds);
         
         // Original panel
         const origWrapper = document.createElement('div');
         origWrapper.style.display = 'flex';
         origWrapper.style.flexDirection = 'column';
         origWrapper.style.alignItems = 'center';
-        origWrapper.style.gap = '4px';
+        origWrapper.style.gap = '8px';
         
         const origLabel = document.createElement('div');
         origLabel.textContent = 'ORIGINAL PHOTO';
         origLabel.style.color = '#888';
-        origLabel.style.fontSize = '12px';
+        origLabel.style.fontSize = '14px';
         origLabel.style.fontWeight = 'bold';
         
         const origCanvas = document.createElement('canvas');
-        origCanvas.width = 120;
-        origCanvas.height = 160;
+        origCanvas.width = 160;
+        origCanvas.height = 213;
         const origCtx = origCanvas.getContext('2d');
-        // Fill with dark background
         origCtx.fillStyle = '#1a1a1a';
-        origCtx.fillRect(0, 0, 120, 160);
-        // Draw original image
-        origCtx.drawImage(original, 0, 0, 120, 160);
+        origCtx.fillRect(0, 0, 160, 213);
+        origCtx.drawImage(original, 0, 0, 160, 213);
         
         origWrapper.appendChild(origLabel);
         origWrapper.appendChild(origCanvas);
         
-        // Cutout panel with checkerboard
+        // Cutout panel
         const cutoutWrapper = document.createElement('div');
         cutoutWrapper.style.display = 'flex';
         cutoutWrapper.style.flexDirection = 'column';
         cutoutWrapper.style.alignItems = 'center';
-        cutoutWrapper.style.gap = '4px';
+        cutoutWrapper.style.gap = '8px';
         
         const cutoutLabel = document.createElement('div');
-        cutoutLabel.textContent = 'CUTOUT / TRANSPARENT';
+        cutoutLabel.textContent = 'CUTOUT';
         cutoutLabel.style.color = '#888';
-        cutoutLabel.style.fontSize = '12px';
+        cutoutLabel.style.fontSize = '14px';
         cutoutLabel.style.fontWeight = 'bold';
         
         const cutoutCanvas = document.createElement('canvas');
-        cutoutCanvas.width = 120;
-        cutoutCanvas.height = 160;
+        cutoutCanvas.width = 160;
+        cutoutCanvas.height = 213;
         const cctx = cutoutCanvas.getContext('2d');
         
-        // Checkerboard pattern
-        cctx.fillStyle = '#ccc';
-        cctx.fillRect(0, 0, 60, 80);
-        cctx.fillStyle = '#999';
-        cctx.fillRect(60, 0, 60, 80);
-        cctx.fillRect(0, 80, 60, 80);
-        cctx.fillStyle = '#ccc';
-        cctx.fillRect(60, 80, 60, 80);
+        // Draw checkerboard background for transparency view
+        cctx.fillStyle = '#1a1a1a';
+        cctx.fillRect(0, 0, 160, 213);
+        // Add checker pattern
+        cctx.fillStyle = '#2a2a2a';
+        cctx.fillRect(0, 0, 8, 8);
+        cctx.fillRect(16, 0, 8, 8);
+        cctx.fillRect(0, 16, 8, 8);
+        cctx.fillRect(16, 16, 8, 8);
+        cctx.fillRect(8, 8, 8, 8);
         
-        // Draw cutout on top
-        cctx.drawImage(cutout, 0, 0, 120, 160);
+        cctx.drawImage(cutout, 0, 0, 160, 213);
         
         cutoutWrapper.appendChild(cutoutLabel);
         cutoutWrapper.appendChild(cutoutCanvas);
         
+        const boundsLabel = document.createElement('div');
+        boundsLabel.textContent = `BOUNDS: ${bounds ? JSON.stringify(bounds) : 'none'}`;
+        boundsLabel.style.color = '#4ade80';
+        boundsLabel.style.fontSize = '12px';
+        boundsLabel.style.fontFamily = 'monospace';
+        
+        const debugContainer = document.createElement('div');
+        debugContainer.style.display = 'flex';
+        debugContainer.style.flexDirection = 'column';
+        debugContainer.style.gap = '16px';
+        debugContainer.style.alignItems = 'center';
+        debugContainer.style.padding = '20px';
+        
+        const debugHeader = document.createElement('div');
+        debugHeader.textContent = 'BACKGROUND REMOVAL TEST';
+        debugHeader.style.color = '#ff6b35';
+        debugHeader.style.fontWeight = 'bold';
+        debugHeader.style.fontSize = '18px';
+        debugHeader.style.marginBottom = '12px';
+        
         debugContainer.appendChild(debugHeader);
         debugContainer.appendChild(origWrapper);
         debugContainer.appendChild(cutoutWrapper);
+        debugContainer.appendChild(boundsLabel);
         area.appendChild(debugContainer);
     }
     
@@ -411,7 +254,6 @@ function showScreen(name) {
 // ============= ARCH MASK =============
 function clipToPortraitArch(ctx) {
     const { x, y, width, height } = CARD_LAYOUT.portrait;
-    
     ctx.beginPath();
     ctx.moveTo(x + 10, y + height - 20);
     ctx.lineTo(x + width - 10, y + height - 20);
@@ -425,35 +267,24 @@ function clipToPortraitArch(ctx) {
 }
 
 // ============= POSITION CALCULATION =============
-// Calculate position with proper bottom anchor
 function calculateCutoutPosition(cutout) {
     const portrait = CARD_LAYOUT.portrait;
     const cw = cutout.width;
     const ch = cutout.height;
     
-    // Calculate scale to fit within portrait with padding
-    // Use 0.88 as scale factor to leave breathing room
+    // Scale to fit within portrait area
     const scale = Math.min(
-        portrait.width * 0.88 / cw,
-        portrait.height * 0.88 / ch
+        portrait.width * 0.85 / cw,
+        portrait.height * 0.85 / ch
     );
     
-    // Position: centered horizontally, bottom-anchored vertically
-    // Bottom of cutout should be at ~85% of portrait height from top
     const renderedWidth = cw * scale;
     const renderedHeight = ch * scale;
     
     const x = portrait.x + (portrait.width - renderedWidth) / 2;
-    // Position the subject within the arch - bottom anchored with head at top third
-    const y = portrait.y + 50;  // Leave room for head at top
+    const y = portrait.y + 50;
     
-    console.log('[RENDER] Position calc:', { 
-        scale, 
-        renderedWidth: Math.round(renderedWidth), 
-        renderedHeight: Math.round(renderedHeight),
-        x: Math.round(x), 
-        y: Math.round(y) 
-    });
+    console.log('[RENDER] Position:', { scale, x: Math.round(x), y: Math.round(y) });
     
     return {
         x: x,
@@ -463,21 +294,64 @@ function calculateCutoutPosition(cutout) {
     };
 }
 
-// ============= RENDERING =============
-function renderBuilderPreview() {
-    console.log('[RENDER] Builder preview');
+// ============= TEXT RENDERING =============
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+    const lines = text.split('\n');
+    let currentY = y;
     
-    const canvas = $('card-preview');
-    if (!canvas) { console.error('[RENDER] No canvas'); return; }
-    if (!templateImg) { loadTemplate().then(renderBuilderPreview); return; }
+    lines.forEach(line => {
+        const words = line.split(' ');
+        let lineText = '';
+        
+        words.forEach(word => {
+            const testText = lineText ? lineText + ' ' + word : word;
+            if (ctx.measureText(testText).width > maxWidth && lineText) {
+                ctx.fillText(lineText, x, currentY);
+                lineText = word;
+                currentY += lineHeight;
+            } else {
+                lineText = testText;
+            }
+        });
+        
+        if (lineText) {
+            ctx.fillText(lineText, x, currentY);
+        }
+        currentY += lineHeight;
+    });
+}
+
+function drawText(ctx, field, value) {
+    const f = CARD_LAYOUT.fields[field];
+    if (!f) return;
     
+    ctx.save();
+    ctx.fillStyle = '#F5F5F7'; // White text
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${f.fontSize}px system-ui, sans-serif`;
+    
+    const centerX = f.x + f.w / 2;
+    const centerY = f.y + f.h / 2;
+    
+    drawWrappedText(ctx, value, centerX, centerY, f.w - 20, f.fontSize * 1.3);
+    ctx.restore();
+}
+
+// ============= CARD RENDERING =============
+function renderCard(canvas) {
     const ctx = canvas.getContext('2d');
-    canvas.width = templateImg.naturalWidth;
-    canvas.height = templateImg.naturalHeight;
+    canvas.width = CARD_LAYOUT.width;
+    canvas.height = CARD_LAYOUT.height;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
     
+    // Draw template
+    if (templateImg) {
+        ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
+    }
+    
+    // Draw cutout
     if (state.cutout) {
         ctx.save();
         const pos = calculateCutoutPosition(state.cutout);
@@ -485,31 +359,39 @@ function renderBuilderPreview() {
         ctx.clip();
         ctx.drawImage(state.cutout, pos.x, pos.y, pos.w, pos.h);
         ctx.restore();
-        console.log('[RENDER] Cutout composited at:', pos.x, pos.y);
+        console.log('[RENDER] Cutout composited');
     }
+    
+    // Draw data fields
+    drawText(ctx, 'name', state.form.name);
+    drawText(ctx, 'role', state.form.role);
+    drawText(ctx, 'stack', state.form.stack);
+    drawText(ctx, 'builderTitle', state.form.builderTitle);
+    drawText(ctx, 'building', state.form.building);
+    drawText(ctx, 'sideQuest', state.form.sideQuest);
+    drawText(ctx, 'sleepStatus', state.form.sleepStatus);
+    drawText(ctx, 'chaos', `CHAOS: ${state.form.chaos}%`);
+    drawText(ctx, 'poweredBy', state.form.poweredBy);
+    drawText(ctx, 'mostUsedKey', state.form.mostUsedKey);
+    drawText(ctx, 'favoriteError', `ERROR: ${state.form.favoriteError}`);
+    drawText(ctx, 'id', `HHG26-ID: ${state.id}`);
+    
+    console.log('[RENDER] Card complete');
+}
+
+function renderBuilderPreview() {
+    console.log('[RENDER] Builder preview');
+    const canvas = $('card-preview');
+    if (!canvas) return;
+    renderCard(canvas);
 }
 
 function renderResult() {
     console.log('[RENDER] Final result');
-    
     const canvas = $('card-result');
-    if (!canvas || !templateImg) return;
+    if (!canvas) return;
     
-    const ctx = canvas.getContext('2d');
-    canvas.width = templateImg.naturalWidth;
-    canvas.height = templateImg.naturalHeight;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
-    
-    if (state.cutout) {
-        ctx.save();
-        clipToPortraitArch(ctx);
-        ctx.clip();
-        const pos = calculateCutoutPosition(state.cutout);
-        ctx.drawImage(state.cutout, pos.x, pos.y, pos.w, pos.h);
-        ctx.restore();
-    }
+    renderCard(canvas);
     
     canvas.toBlob((blob) => {
         state.output = blob;
@@ -519,6 +401,51 @@ function renderResult() {
 
 // ============= EVENT BINDING =============
 function bindEvents() {
+    const inputs = {
+        name: 'input-name',
+        role: 'input-role',
+        stack: 'input-stack',
+        building: 'input-building',
+        sideQuest: 'input-sidequest',
+        sleepStatus: 'input-sleep'
+    };
+    
+    Object.entries(inputs).forEach(([field, id]) => {
+        const input = $(id);
+        if (!input) return;
+        
+        input.value = state.form[field];
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            state.form[field] = val;
+            renderBuilderPreview();
+        });
+    });
+    
+    const genBtn = $('generate-btn');
+    if (genBtn) {
+        genBtn.onclick = () => {
+            showScreen('result');
+            renderResult();
+        };
+    }
+    
+    const dlBtn = $('download-btn');
+    if (dlBtn) {
+        dlBtn.onclick = downloadImage;
+    }
+    
+    const shareBtn = $('share-btn');
+    if (shareBtn) {
+        shareBtn.onclick = shareImage;
+    }
+    
+    const newBtn = $('new-btn');
+    if (newBtn) {
+        newBtn.onclick = () => showScreen('landing');
+    }
+    
+    // Upload
     const frame = $('upload-area');
     const input = $('file-input');
     const uploadBtn = $('upload-btn');
@@ -535,10 +462,6 @@ function bindEvents() {
     
     if (input) input.onchange = (e) => { if (e.target.files[0]) processFile(e.target.files[0]); };
     if (uploadBtn) uploadBtn.onclick = (e) => { e.stopPropagation(); input?.click(); };
-    if ($('generate-btn')) $('generate-btn').onclick = () => { showScreen('result'); renderResult(); };
-    if ($('download-btn')) $('download-btn').onclick = downloadImage;
-    if ($('share-btn')) $('share-btn').onclick = shareImage;
-    if ($('new-btn')) $('new-btn').onclick = () => showScreen('landing');
 }
 
 // ============= UTILITIES =============
@@ -566,16 +489,21 @@ function showError(msg) {
     area.querySelector('button').onclick = () => showScreen('landing');
 }
 
-// ============= DEBUG TOGGLE =============
+// ============= DEBUG =============
 window.toggleDebug = () => {
     state.debugMode = !state.debugMode;
     console.log('[DEBUG]', state.debugMode ? 'ON' : 'OFF');
-    console.log('[DEBUG] state.photo:', state.photo);
-    console.log('[DEBUG] state.cutout:', state.cutout);
-    if (state.photo && state.cutout) {
-        $('upload-area').innerHTML = '';
-        showPhotoPreview(state.photo.img, state.cutout);
-    }
+};
+
+window.togglePhotoDebug = () => {
+    state.photoDebug = !state.photoDebug;
+    console.log('[DEBUG] Photo debug:', state.photoDebug ? 'ON' : 'OFF');
+};
+
+// Debug: Show field layout overlay on the card
+window.toggleCardLayoutDebug = () => {
+    state.debugMode = !state.debugMode;
+    console.log('[DEBUG] Card layout:', state.debugMode ? 'ON' : 'OFF');
 };
 
 // ============= INIT =============
@@ -588,6 +516,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[INIT] Ready');
     } catch (err) {
         console.error('[INIT] Failed:', err);
-        showError('Failed to load resources. Refresh and try again.');
+        showError('Failed to load resources.');
     }
 });
