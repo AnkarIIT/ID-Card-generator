@@ -95,6 +95,127 @@ export async function getQrCodeImage(url: string, handleFallback?: string): Prom
 }
 
 // ==================================================
+// PORTRAIT FITTING CONFIGURATION
+// ==================================================
+export const PORTRAIT_FIT = {
+  /**
+   * Fraction of the vertical overflow (drawHeight - targetHeight) by which the
+   * cover-fit window is biased toward the UPPER part of the original photo.
+   * 0 = perfectly centered. Positive values reveal more of the top of the photo
+   * (keeps headroom / avoids cropping the face) and crop more from the bottom.
+   * Tune this single constant to adjust the vertical framing.
+   */
+  verticalBias: 0.08,
+  scaleMode: 'cover' as const,
+};
+
+export interface PortraitRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PortraitMask {
+  /** Alpha mask (opaque inside the arch opening, transparent elsewhere) at 1024×1536. */
+  canvas: HTMLCanvasElement;
+  /** Bounding box of the detected opening (used as the cover-fit target rect). */
+  bounds: PortraitRect;
+}
+
+let portraitMaskCached: PortraitMask | null = null;
+
+function isPortraitDebugEnabled(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).__PORTRAIT_DEBUG__;
+}
+
+/**
+ * Derives the inner portrait opening directly from the actual front.png pixels.
+ * Flood-fills the arch interior from an interior seed, treating gold pixels as
+ * the hard wall. The gold frame ring fully encloses the opening, so the fill
+ * reproduces the exact pink arch shape (apex, flared sides, rounded bottom)
+ * without any hard-coded bezier estimation. Result is cached.
+ */
+export function getPortraitMask(templateImage: HTMLImageElement): PortraitMask | null {
+  if (portraitMaskCached) return portraitMaskCached;
+
+  const w = CARD_LAYOUT.canvas.width;
+  const h = CARD_LAYOUT.canvas.height;
+
+  try {
+    const src = document.createElement('canvas');
+    src.width = w;
+    src.height = h;
+    const sctx = src.getContext('2d', { willReadFrequently: true });
+    if (!sctx) return null;
+    sctx.drawImage(templateImage, 0, 0, w, h);
+    const { data } = sctx.getImageData(0, 0, w, h);
+
+    const isGold = (r: number, g: number, b: number) =>
+      r > 120 && g > 85 && b < 160 && r > b && r - b > 40;
+
+    const visited = new Uint8Array(w * h);
+    const stack: Array<[number, number]> = [[715, 500]];
+    visited[500 * w + 715] = 1;
+    let minX = w;
+    let maxX = -1;
+    let minY = h;
+    let maxY = -1;
+
+    while (stack.length) {
+      const [x, y] = stack.pop()!;
+      const i = (y * w + x) * 4;
+      if (isGold(data[i], data[i + 1], data[i + 2])) continue;
+      visited[y * w + x] = 1;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (x > 0 && !visited[y * w + x - 1]) {
+        visited[y * w + x - 1] = 1;
+        stack.push([x - 1, y]);
+      }
+      if (x < w - 1 && !visited[y * w + x + 1]) {
+        visited[y * w + x + 1] = 1;
+        stack.push([x + 1, y]);
+      }
+      if (y > 0 && !visited[(y - 1) * w + x]) {
+        visited[(y - 1) * w + x] = 1;
+        stack.push([x, y - 1]);
+      }
+      if (y < h - 1 && !visited[(y + 1) * w + x]) {
+        visited[(y + 1) * w + x] = 1;
+        stack.push([x, y + 1]);
+      }
+    }
+
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = w;
+    maskCanvas.height = h;
+    const mctx = maskCanvas.getContext('2d');
+    if (!mctx) return null;
+    const imgData = mctx.createImageData(w, h);
+    for (let p = 0; p < w * h; p++) {
+      if (visited[p]) imgData.data[p * 4 + 3] = 255;
+    }
+    mctx.putImageData(imgData, 0, 0);
+
+    const bounds: PortraitRect = {
+      x: minX,
+      y: minY,
+      width: maxX - minX + 1,
+      height: maxY - minY + 1,
+    };
+    portraitMaskCached = { canvas: maskCanvas, bounds };
+    console.log('[PORTRAIT] mask built from front.png pixels. Bounds:', bounds);
+    return portraitMaskCached;
+  } catch (err) {
+    console.error('[PORTRAIT] mask build failed:', err);
+    return null;
+  }
+}
+
+// ==================================================
 // CENTRALIZED CARD LAYOUT SOURCE OF TRUTH (1024 × 1536)
 // Derived directly from front.png template geometry
 // ==================================================
@@ -192,30 +313,54 @@ export const CARD_LAYOUT = {
 };
 
 /**
+ * Cover fitting algorithm for complete original photo inside ornate portrait region.
+ * Behavior matches CSS `object-fit: cover` with a vertical bias toward the photo's
+ * upper portion (see PORTRAIT_FIT.verticalBias).
+ */
+export function computeCoverRect(
+  img: HTMLImageElement,
+  target: PortraitRect,
+  transform?: PhotoTransform
+): { drawX: number; drawY: number; drawW: number; drawH: number; scale: number; baseScale: number; extraScale: number } {
+  const imgW = img.naturalWidth || img.width || 1;
+  const imgH = img.naturalHeight || img.height || 1;
+
+  const baseScale = Math.max(target.width / imgW, target.height / imgH);
+  const extraScale = transform?.scale ? Math.max(0.2, transform.scale) : 1;
+  const scale = baseScale * extraScale;
+
+  const drawW = imgW * scale;
+  const drawH = imgH * scale;
+
+  // Center horizontally.
+  const drawX = target.x + (target.width - drawW) / 2 + (transform?.x || 0);
+
+  // Center vertically, then shift down by a fraction of the vertical overflow so
+  // the visible window reveals more of the UPPER part of the photo (headroom).
+  const overflowY = Math.max(0, drawH - target.height);
+  const drawY = target.y + (target.height - drawH) / 2 + overflowY * PORTRAIT_FIT.verticalBias + (transform?.y || 0);
+
+  if (isPortraitDebugEnabled()) {
+    console.log('[PORTRAIT] source:', { width: imgW, height: imgH });
+    console.log('[PORTRAIT] target:', { x: target.x, y: target.y, width: target.width, height: target.height });
+    console.log('[PORTRAIT] drawRect:', { x: drawX, y: drawY, width: drawW, height: drawH });
+    console.log('[PORTRAIT] scale:', scale.toFixed(4), '| baseScale:', baseScale.toFixed(4), '| extraScale:', extraScale.toFixed(2));
+    console.log('[PORTRAIT] verticalBias:', PORTRAIT_FIT.verticalBias, '| overflowY:', overflowY.toFixed(1));
+  }
+
+  return { drawX, drawY, drawW, drawH, scale, baseScale, extraScale };
+}
+
+/**
  * Cover fitting algorithm for complete original photo inside ornate portrait region
  */
 export function drawCoverPhoto(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
-  portrait = CARD_LAYOUT.portrait,
+  portrait: PortraitRect = CARD_LAYOUT.portrait,
   transform?: PhotoTransform
 ) {
-  const imgW = img.naturalWidth || img.width || 1;
-  const imgH = img.naturalHeight || img.height || 1;
-
-  // Cover scale factor
-  const baseScale = Math.max(portrait.width / imgW, portrait.height / imgH);
-  const extraScale = transform?.scale ? Math.max(0.2, transform.scale) : 1;
-  const finalScale = baseScale * extraScale;
-
-  const drawW = imgW * finalScale;
-  const drawH = imgH * finalScale;
-
-  const offsetX = transform?.x || 0;
-  const offsetY = transform?.y || 0;
-
-  const drawX = portrait.x + (portrait.width - drawW) / 2 + offsetX;
-  const drawY = portrait.y + (portrait.height - drawH) / 2 + offsetY;
+  const { drawX, drawY, drawW, drawH } = computeCoverRect(img, portrait, transform);
 
   ctx.save();
 
@@ -497,6 +642,13 @@ if (typeof window !== 'undefined') {
 
   (window as any).toggleLayoutDebug = toggleFn;
   (window as any).toggleTextLayoutDebug = toggleFn;
+
+  const togglePortraitFn = () => {
+    (window as any).__PORTRAIT_DEBUG__ = !(window as any).__PORTRAIT_DEBUG__;
+    console.log(`[PORTRAIT DEBUG MODE]: ${(window as any).__PORTRAIT_DEBUG__ ? 'ENABLED' : 'DISABLED'}`);
+    return (window as any).__PORTRAIT_DEBUG__;
+  };
+  (window as any).togglePortraitDebug = togglePortraitFn;
 }
 
 /**
@@ -727,22 +879,48 @@ function renderFrontBadge(
   }
 
   // STEP 2 & 3: Clip to INNER portrait/photo region & draw FULL ORIGINAL PHOTO with cover fitting
-  ctx.save();
-  CARD_LAYOUT.portrait.path(ctx);
-  ctx.clip();
+  // The clipping boundary is derived from the actual front.png pixels (pink arch
+  // opening bounded by the gold frame) instead of hard-coded bezier estimates.
+  const portraitMask = templateImage ? getPortraitMask(templateImage) : null;
 
-  if (userImage) {
-    drawCoverPhoto(ctx, userImage, CARD_LAYOUT.portrait, config.photoTransform);
-  } else if (!templateImage) {
-    ctx.fillStyle = p.boxBg;
-    ctx.fillRect(CARD_LAYOUT.portrait.x, CARD_LAYOUT.portrait.y, CARD_LAYOUT.portrait.width, CARD_LAYOUT.portrait.height);
-    ctx.fillStyle = p.creamText;
-    ctx.font = 'bold 28px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('YOUR PHOTO HERE', CARD_LAYOUT.portrait.x + CARD_LAYOUT.portrait.width / 2, CARD_LAYOUT.portrait.y + CARD_LAYOUT.portrait.height / 2);
+  if (userImage && portraitMask) {
+    // Draw the full original photo (cover-fit) into a temp layer, then clip it to
+    // the exact arch mask via destination-in before compositing over the template.
+    const photoLayer = document.createElement('canvas');
+    photoLayer.width = w;
+    photoLayer.height = h;
+    const pctx = photoLayer.getContext('2d');
+    if (pctx) {
+      drawCoverPhoto(pctx, userImage, portraitMask.bounds, config.photoTransform);
+      pctx.globalCompositeOperation = 'destination-in';
+      pctx.drawImage(portraitMask.canvas, 0, 0, w, h);
+      pctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(photoLayer, 0, 0);
+    } else {
+      ctx.save();
+      CARD_LAYOUT.portrait.path(ctx);
+      ctx.clip();
+      drawCoverPhoto(ctx, userImage, portraitMask.bounds, config.photoTransform);
+      ctx.restore();
+    }
+  } else {
+    ctx.save();
+    CARD_LAYOUT.portrait.path(ctx);
+    ctx.clip();
+
+    if (userImage) {
+      drawCoverPhoto(ctx, userImage, CARD_LAYOUT.portrait, config.photoTransform);
+    } else if (!templateImage) {
+      ctx.fillStyle = p.boxBg;
+      ctx.fillRect(CARD_LAYOUT.portrait.x, CARD_LAYOUT.portrait.y, CARD_LAYOUT.portrait.width, CARD_LAYOUT.portrait.height);
+      ctx.fillStyle = p.creamText;
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('YOUR PHOTO HERE', CARD_LAYOUT.portrait.x + CARD_LAYOUT.portrait.width / 2, CARD_LAYOUT.portrait.y + CARD_LAYOUT.portrait.height / 2);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // STEP 4: Restore the golden portrait frame on top.
   // The overlay contains ONLY the frame's pixels (transparent elsewhere), so it
@@ -856,7 +1034,63 @@ function renderFrontBadge(
   // STEP 6: Debug layout overlay
   if (!isExport) {
     renderDebugLayoutBoxes(ctx);
+    if (portraitMask) renderPortraitDebugOverlay(ctx, portraitMask, userImage, config);
   }
+}
+
+/**
+ * DEBUG OVERLAY for the portrait mask + cover-fit rectangle.
+ * Shows (1) the detected arch mask tint, (2) mask bounds, (3) the calculated
+ * photo rectangle, and the mask/photo metrics. Only drawn when
+ * `window.togglePortraitDebug()` is enabled and never baked into exports.
+ */
+function renderPortraitDebugOverlay(
+  ctx: CanvasRenderingContext2D,
+  mask: PortraitMask,
+  userImage: HTMLImageElement | null,
+  config: CardConfig
+) {
+  if (!isPortraitDebugEnabled()) return;
+
+  ctx.save();
+
+  // 1. Mask shape (subtle tint over the detected opening)
+  ctx.globalAlpha = 0.18;
+  ctx.drawImage(mask.canvas, 0, 0, CARD_LAYOUT.canvas.width, CARD_LAYOUT.canvas.height);
+  ctx.globalAlpha = 1;
+
+  // 2. Mask bounds (magenta)
+  const b = mask.bounds;
+  ctx.strokeStyle = '#ff00ff';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(b.x, b.y, b.width, b.height);
+
+  // 3. Calculated cover-fit photo rectangle (cyan, dashed)
+  if (userImage) {
+    const r = computeCoverRect(userImage, mask.bounds, config.photoTransform);
+    ctx.strokeStyle = '#00ffff';
+    ctx.setLineDash([10, 6]);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(r.drawX, r.drawY, r.drawW, r.drawH);
+    ctx.setLineDash([]);
+  }
+
+  ctx.font = 'bold 13px monospace';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ff00ff';
+  ctx.fillText(`MASK  x:${b.x} y:${b.y} w:${b.width} h:${b.height}`, 8, 20);
+  if (userImage) {
+    const r = computeCoverRect(userImage, mask.bounds, config.photoTransform);
+    ctx.fillStyle = '#00ffff';
+    ctx.fillText(
+      `PHOTO x:${Math.round(r.drawX)} y:${Math.round(r.drawY)} w:${Math.round(r.drawW)} h:${Math.round(r.drawH)} scale:${r.scale.toFixed(3)}`,
+      8,
+      38
+    );
+    ctx.fillText(`verticalBias: ${PORTRAIT_FIT.verticalBias} (top-biased)`, 8, 56);
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -900,14 +1134,6 @@ function renderBackBadge(
 
   if (qrImage) {
     // Draw the actual QR code on top of the template
-    // With a rounded corner effect (radius 50px)
-    ctx.save();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#8b0000'; // Dark reddish-pink border color
-    drawRoundedRect(ctx, qrX - 50, qrY - 50, qrSize + 100, qrSize + 100, 50);
-    ctx.stroke();
-    ctx.restore();
-    
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
   } else {
     // Only show placeholder text if QR code is not available AND no template
