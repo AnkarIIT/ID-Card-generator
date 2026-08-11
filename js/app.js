@@ -3,8 +3,8 @@ import { removeBackground } from
 
 /* HH Goa 2026 - IMG.LY Background Removal Integration
  * 
- * FIXED: Using proper ES module import from CDN
- * API: removeBackground(imageSource, options?) returns PNG Blob
+ * DIAGNOSTIC VERSION - For runtime verification
+ * Tests: SharedArrayBuffer, CORS headers, model loading
  */
 
 // Global state
@@ -16,19 +16,34 @@ const state = {
     debugMode: false
 };
 
-// Card layout - measured from front.png
+// Card layout - measured from front.png (1024x1536 canvas)
 const CARD_LAYOUT = {
-    width: 1080,
-    height: 1350,
+    width: 1024,
+    height: 1536,
     portrait: {
-        x: 380,
-        y: 80,
+        x: 222,  // left padding
+        y: 78,   // top padding  
+        width: 580,   // 1024 - 222*2 - 20
+        height: 750
+    },
+    photo: {
+        x: 222,
+        y: 78,
         width: 580,
         height: 750
     }
 };
 
 const $ = (id) => document.getElementById(id);
+
+// ============= DIAGNOSTICS =============
+function runDiagnostics() {
+    console.log('[DIAG] === Running Diagnostics ===');
+    console.log('[DIAG] crossOriginIsolated:', window.crossOriginIsolated);
+    console.log('[DIAG] SharedArrayBuffer:', typeof SharedArrayBuffer);
+    console.log('[DIAG] removeBackground:', typeof removeBackground);
+    console.log('[DIAG] RemoveBg module:', removeBackground?.name || 'no name');
+}
 
 // ============= TEMPLATE LOADING =============
 async function loadTemplate() {
@@ -54,24 +69,39 @@ async function removeBackgroundFromFile(file) {
     console.log('[BG] Starting IMG.LY background removal...');
     console.log('[BG] File:', file.name);
     console.log('[BG] Size:', file.size);
-
+    console.log('[BG] Type:', file.type);
+    
+    // Run diagnostics before processing
+    runDiagnostics();
+    
     try {
         // First run downloads and caches the WASM model
-        const blob = await removeBackground(file, {
+        const config = {
             debug: true,
             model: 'isnet_fp16',
+            foreground: true,
             output: {
                 format: 'image/png',
                 type: 'foreground'
+            },
+            progress: (key, current, total) => {
+                console.log(`[IMG.LY] ${key}: ${current}/${total}`);
             }
-        });
-
-        console.log('[BG] Result type:', blob.constructor.name);
-        console.log('[BG] Blob type:', blob.type);
-        console.log('[BG] Blob size:', blob.size);
-
+        };
+        
+        console.log('[BG] Config:', JSON.stringify(config, null, 2));
+        
+        const blob = await removeBackground(file, config);
+        
+        console.log('[BG] Result type:', blob?.constructor?.name);
+        console.log('[BG] Blob type:', blob?.type);
+        console.log('[BG] Blob size:', blob?.size);
+        console.log('[IMG.LY] RESULT:', blob);
+        console.log('[IMG.LY] TYPE:', blob?.type);
+        console.log('[IMG.LY] SIZE:', blob?.size);
+        
         if (!(blob instanceof Blob)) {
-            throw new Error('Background removal returned invalid result');
+            throw new Error('Background removal returned invalid result - not a Blob');
         }
 
         if (!blob.type.includes('png') && !blob.type.includes('image')) {
@@ -82,6 +112,9 @@ async function removeBackgroundFromFile(file) {
 
     } catch (err) {
         console.error('[BG] Background removal failed:', err);
+        console.error('[BG] Error name:', err?.name);
+        console.error('[BG] Error message:', err?.message);
+        console.error('[BG] Error stack:', err?.stack);
         throw err;
     }
 }
@@ -91,6 +124,7 @@ async function blobToImage(blob) {
     return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(blob);
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         img.onload = () => {
             URL.revokeObjectURL(url);
             resolve(img);
@@ -178,17 +212,20 @@ function findSubjectBounds(image) {
         console.log('[BOUNDS] No subject found');
         return { x: 0, y: 0, w: w, h: h };
     }
-    
+
     // Add padding for natural framing
     const padX = Math.round((maxX - minX) * 0.08);
     const padY = Math.round((maxY - minY) * 0.12);
     
-    return {
+    const bounds = {
         x: Math.max(0, minX - padX),
         y: Math.max(0, minY - padY),
         w: Math.min(w - minX - padX, maxX - minX + padX),
         h: Math.min(h - minY - padY, maxY - minY + padY)
     };
+    
+    console.log('[BOUNDS] Subject bounds:', bounds);
+    return bounds;
 }
 
 // ============= CREATE CUTOUT CANVAS =============
@@ -218,6 +255,7 @@ async function processFile(file) {
         // Step 1: Load original for reference
         const originalUrl = URL.createObjectURL(file);
         const originalImg = new Image();
+        originalImg.crossOrigin = 'anonymous';
         await new Promise((resolve, reject) => {
             originalImg.onload = resolve;
             originalImg.onerror = reject;
@@ -226,6 +264,7 @@ async function processFile(file) {
         state.photo = { img: originalImg, url: originalUrl };
         
         // Step 2: Background removal via IMG.LY
+        console.log('[BG] Calling IMG.LY removeBackground()...');
         const cutoutBlob = await removeBackgroundFromFile(file);
         console.log('[BG] Got PNG Blob:', cutoutBlob.size, 'bytes');
         
@@ -239,11 +278,11 @@ async function processFile(file) {
             console.warn('[BG] Low transparency detected');
         }
         
-        // Step 5: Find subject bounds
+        // Step 5: Find subject bounds - DON'T aggressively crop
         const bounds = findSubjectBounds(cutoutImg);
         console.log('[BOUNDS] Cropped bounds:', bounds);
         
-        // Step 6: Create tight cutout
+        // Step 6: Create tight cutout canvas
         const cutoutCanvas = createCutoutCanvas(cutoutImg, bounds);
         state.cutout = cutoutCanvas;
         console.log('[CUTOUT] Final cutout:', cutoutCanvas.width, 'x', cutoutCanvas.height);
@@ -254,7 +293,8 @@ async function processFile(file) {
     } catch (err) {
         console.error('[ERROR] Processing failed:', err);
         state.bgRemovalStatus = 'error';
-        showError(`Could not isolate the person: ${err.message}. Please try another photo.`);
+        // Show the ACTUAL error for debugging
+        showError(`Model error: ${err.message}. Check console for details.`);
     }
 }
 
@@ -267,58 +307,81 @@ function showPhotoPreview(original, cutout) {
         // Debug view: original vs cutout side by side
         const debugContainer = document.createElement('div');
         debugContainer.style.display = 'flex';
+        debugContainer.style.flexDirection = 'column';
         debugContainer.style.gap = '16px';
         debugContainer.style.marginBottom = '16px';
+        debugContainer.style.flexWrap = 'wrap';
+        debugContainer.style.justifyContent = 'center';
+        debugContainer.style.alignItems = 'center';
         
-        // Original
-        const origLabel = document.createElement('div');
-        origLabel.textContent = 'ORIGINAL';
-        origLabel.style.color = '#888';
-        origLabel.style.fontSize = '12px';
+        // Add debug header
+        const debugHeader = document.createElement('div');
+        debugHeader.textContent = 'BACKGROUND REMOVAL TEST';
+        debugHeader.style.color = '#ff6b35';
+        debugHeader.style.fontWeight = 'bold';
+        debugHeader.style.marginBottom = '8px';
+        debugHeader.style.fontSize = '16px';
         
-        const origCanvas = document.createElement('canvas');
-        origCanvas.width = 90;
-        origCanvas.height = 112;
-        const origCtx = origCanvas.getContext('2d');
-        origCtx.fillStyle = '#1a1a1a';
-        origCtx.fillRect(0, 0, 90, 112);
-        origCtx.drawImage(original, 0, 0, 90, 112);
-        
+        // Original panel
         const origWrapper = document.createElement('div');
-        origWrapper.appendChild(origLabel);
-        origWrapper.appendChild(origCanvas);
         origWrapper.style.display = 'flex';
         origWrapper.style.flexDirection = 'column';
         origWrapper.style.alignItems = 'center';
+        origWrapper.style.gap = '4px';
         
-        // Cutout with checkerboard
-        const cutoutLabel = document.createElement('div');
-        cutoutLabel.textContent = 'CUTOUT';
-        cutoutLabel.style.color = '#888';
-        cutoutLabel.style.fontSize = '12px';
+        const origLabel = document.createElement('div');
+        origLabel.textContent = 'ORIGINAL PHOTO';
+        origLabel.style.color = '#888';
+        origLabel.style.fontSize = '12px';
+        origLabel.style.fontWeight = 'bold';
         
-        const cutoutCanvas = document.createElement('canvas');
-        cutoutCanvas.width = 90;
-        cutoutCanvas.height = 112;
-        const cctx = cutoutCanvas.getContext('2d');
+        const origCanvas = document.createElement('canvas');
+        origCanvas.width = 120;
+        origCanvas.height = 160;
+        const origCtx = origCanvas.getContext('2d');
+        // Fill with dark background
+        origCtx.fillStyle = '#1a1a1a';
+        origCtx.fillRect(0, 0, 120, 160);
+        // Draw original image
+        origCtx.drawImage(original, 0, 0, 120, 160);
         
-        // Checkerboard
-        cctx.fillStyle = '#ccc';
-        cctx.fillRect(0, 0, 45, 56);
-        cctx.fillStyle = '#999';
-        cctx.fillRect(45, 0, 45, 56);
-        cctx.fillRect(0, 56, 45, 56);
-        cctx.fillStyle = '#ccc';
-        cctx.fillRect(45, 56, 45, 56);
-        cctx.drawImage(cutout, 0, 0, 90, 112);
+        origWrapper.appendChild(origLabel);
+        origWrapper.appendChild(origCanvas);
         
+        // Cutout panel with checkerboard
         const cutoutWrapper = document.createElement('div');
-        cutoutWrapper.appendChild(cutoutLabel);
-        cutoutWrapper.appendChild(cutoutCanvas);
         cutoutWrapper.style.display = 'flex';
         cutoutWrapper.style.flexDirection = 'column';
         cutoutWrapper.style.alignItems = 'center';
+        cutoutWrapper.style.gap = '4px';
         
+        const cutoutLabel = document.createElement('div');
+        cutoutLabel.textContent = 'CUTOUT / TRANSPARENT';
+        cutoutLabel.style.color = '#888';
+        cutoutLabel.style.fontSize = '12px';
+        cutoutLabel.style.fontWeight = 'bold';
+        
+        const cutoutCanvas = document.createElement('canvas');
+        cutoutCanvas.width = 120;
+        cutoutCanvas.height = 160;
+        const cctx = cutoutCanvas.getContext('2d');
+        
+        // Checkerboard pattern
+        cctx.fillStyle = '#ccc';
+        cctx.fillRect(0, 0, 60, 80);
+        cctx.fillStyle = '#999';
+        cctx.fillRect(60, 0, 60, 80);
+        cctx.fillRect(0, 80, 60, 80);
+        cctx.fillStyle = '#ccc';
+        cctx.fillRect(60, 80, 60, 80);
+        
+        // Draw cutout on top
+        cctx.drawImage(cutout, 0, 0, 120, 160);
+        
+        cutoutWrapper.appendChild(cutoutLabel);
+        cutoutWrapper.appendChild(cutoutCanvas);
+        
+        debugContainer.appendChild(debugHeader);
         debugContainer.appendChild(origWrapper);
         debugContainer.appendChild(cutoutWrapper);
         area.appendChild(debugContainer);
@@ -362,18 +425,41 @@ function clipToPortraitArch(ctx) {
 }
 
 // ============= POSITION CALCULATION =============
+// Calculate position with proper bottom anchor
 function calculateCutoutPosition(cutout) {
     const portrait = CARD_LAYOUT.portrait;
     const cw = cutout.width;
     const ch = cutout.height;
     
-    const scale = Math.min(portrait.width * 0.85 / cw, portrait.height * 0.85 / ch);
+    // Calculate scale to fit within portrait with padding
+    // Use 0.88 as scale factor to leave breathing room
+    const scale = Math.min(
+        portrait.width * 0.88 / cw,
+        portrait.height * 0.88 / ch
+    );
+    
+    // Position: centered horizontally, bottom-anchored vertically
+    // Bottom of cutout should be at ~85% of portrait height from top
+    const renderedWidth = cw * scale;
+    const renderedHeight = ch * scale;
+    
+    const x = portrait.x + (portrait.width - renderedWidth) / 2;
+    // Position the subject within the arch - bottom anchored with head at top third
+    const y = portrait.y + 50;  // Leave room for head at top
+    
+    console.log('[RENDER] Position calc:', { 
+        scale, 
+        renderedWidth: Math.round(renderedWidth), 
+        renderedHeight: Math.round(renderedHeight),
+        x: Math.round(x), 
+        y: Math.round(y) 
+    });
     
     return {
-        x: portrait.x + (portrait.width - cw * scale) / 2,
-        y: portrait.y + portrait.height * 0.4,
-        w: cw * scale,
-        h: ch * scale
+        x: x,
+        y: y,
+        w: renderedWidth,
+        h: renderedHeight
     };
 }
 
@@ -484,6 +570,8 @@ function showError(msg) {
 window.toggleDebug = () => {
     state.debugMode = !state.debugMode;
     console.log('[DEBUG]', state.debugMode ? 'ON' : 'OFF');
+    console.log('[DEBUG] state.photo:', state.photo);
+    console.log('[DEBUG] state.cutout:', state.cutout);
     if (state.photo && state.cutout) {
         $('upload-area').innerHTML = '';
         showPhotoPreview(state.photo.img, state.cutout);
@@ -500,6 +588,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[INIT] Ready');
     } catch (err) {
         console.error('[INIT] Failed:', err);
-        showError('Failed to load ID template. Please refresh.');
+        showError('Failed to load resources. Refresh and try again.');
     }
 });
