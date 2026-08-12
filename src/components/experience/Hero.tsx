@@ -169,24 +169,13 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
             </button>
           </motion.div>
 
-          <motion.p
-            className="mono-tag mt-6 text-[#a2b8ad]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 3.4, duration: 0.6 }}
-          >
-            NO LOGIN. NO BS.
-          </motion.p>
         </div>
-
-        {/* bottom transition fade */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[6] h-28 bg-gradient-to-t from-[#050807] to-transparent" />
 
         {/* scroll hint */}
         <motion.button
           type="button"
           onClick={onEnter}
-          className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 cursor-pointer"
+          className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 cursor-pointer"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 3.5, duration: 0.8 }}

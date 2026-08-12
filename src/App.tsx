@@ -103,6 +103,8 @@ export default function App() {
 
       {/* ── 02 BUILDER ── */}
       <section id="builder-top" className="relative z-10 bg-[#050807]">
+        {/* Soft edge fade that slides up with the builder */}
+        <div className="pointer-events-none absolute left-0 right-0 top-0 h-40 -translate-y-full bg-gradient-to-b from-transparent to-[#050807]" />
         {/* arrival band: the beach darkening into the UI */}
         <div className="relative h-[46vh] min-h-[320px] w-full overflow-hidden">
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
