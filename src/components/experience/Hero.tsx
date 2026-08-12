@@ -35,7 +35,7 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
         className="pointer-events-none absolute left-1/2 top-[38%] h-[46vh] w-[70vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
           background:
-            'radial-gradient(closest-side, rgba(255,170,90,0.28), rgba(255,120,80,0.08) 55%, transparent)',
+            'radial-gradient(closest-side, rgba(255,175,95,0.22), rgba(255,145,90,0.10) 38%, rgba(255,130,80,0.04) 68%, transparent 100%)',
         }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
