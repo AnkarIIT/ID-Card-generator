@@ -92,11 +92,7 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
         </motion.h1>
 
         <motion.p
-          className="font-display text-[clamp(2.4rem,8vw,6.5rem)] leading-none text-transparent"
-          style={{
-            WebkitTextStroke: '1.5px rgba(255,180,80,0.9)',
-            textShadow: '0 0 30px rgba(255,150,70,0.35)',
-          }}
+          className="font-display text-[clamp(2.4rem,8vw,6.5rem)] leading-none text-[#ff5c8a] glow-pink"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.85, duration: 0.8, ease: EASE }}
