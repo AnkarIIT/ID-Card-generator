@@ -72,13 +72,10 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   };
 
   return (
-    <div className="w-full space-y-2.5">
-      <div className="flex items-center justify-between">
-        <label className="font-mono text-[11px] font-semibold text-[#f3c85c] tracking-wider uppercase">
-          2. Upload Photo
-        </label>
-        <span className="text-[#a2b8ad] text-[11px]">JPG, PNG, HEIC</span>
-      </div>
+    <div className="w-full space-y-2.5 rounded-xl border border-dashed border-[#d4af37]/30 bg-[#071712]/40 p-4 text-center">
+      <label className="font-mono text-[11px] font-semibold text-[#f3c85c] tracking-wider uppercase mb-2.5 block">
+        01 / Photo
+      </label>
 
       {/* Main Upload Drop Zone */}
       <div
@@ -86,12 +83,12 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`group relative flex flex-col items-center justify-center rounded-xl border border-dashed p-5 text-center transition-all duration-150 cursor-pointer ${
+        className={`group relative flex flex-col items-center justify-center rounded-xl border p-4 transition-all duration-150 cursor-pointer ${
           isDragging
             ? 'border-[#f3c85c] bg-[#f3c85c]/10'
             : hasPhoto
-            ? 'border-[#d4af37]/40 bg-[#0c221a]/80 hover:border-[#d4af37]'
-            : 'border-[#d4af37]/30 bg-[#071712]/60 hover:border-[#d4af37]/60 hover:bg-[#0c221a]/50'
+            ? 'border-[#d4af37]/40 bg-[#0c221a]/60 hover:border-[#d4af37]'
+            : 'border-[#d4af37]/30 bg-[#071712]/40 hover:border-[#d4af37]/50'
         }`}
       >
         <input
@@ -105,19 +102,19 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         {isProcessing ? (
           <div className="flex flex-col items-center gap-2 py-2">
             <Loader2 className="h-6 w-6 animate-spin text-[#f3c85c]" />
-            <span className="font-medium text-[#f7eec8] text-xs">Processing image &amp; HEIC format...</span>
+            <span className="font-medium text-[#f7eec8] text-xs">Processing &amp; converting...</span>
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#071712] border border-[#d4af37]/40 text-[#f3c85c] group-hover:border-[#f3c85c] transition-colors shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#071712] border border-[#d4af37]/30 text-[#f3c85c] group-hover:border-[#f3c85c] transition-colors shrink-0">
               {hasPhoto ? <ImageIcon className="h-5 w-5" /> : <Upload className="h-5 w-5" />}
             </div>
             <div className="text-left">
               <p className="font-semibold text-[#f7eec8] text-xs">
-                {hasPhoto ? 'Click to Change Photo' : 'Upload or Drag & Drop Photo'}
+                {hasPhoto ? '✓ Uploaded' : 'Drop your photo'}
               </p>
               <p className="text-[#a2b8ad] text-[11px]">
-                Supports all aspect ratios &amp; HEIC files
+                JPG, PNG, HEIC, WEBP
               </p>
             </div>
           </div>
@@ -135,13 +132,13 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       {!hasPhoto && (
         <div className="pt-0.5">
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <span className="text-[#a2b8ad] text-[11px] shrink-0">Sample photo:</span>
+            <span className="text-[#a2b8ad] text-[11px] shrink-0">samples:</span>
             {DEMO_AVATARS.map((demo, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => onPhotoLoaded(demo.url)}
-                className="flex items-center gap-1.5 rounded-lg bg-[#0c221a] px-2.5 py-1 border border-[#d4af37]/30 hover:border-[#f3c85c] transition-all text-[11px] font-medium text-[#f7eec8] shrink-0 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-lg bg-[#071712] px-2.5 py-1 border border-[#d4af37]/30 hover:border-[#f3c85c] transition-all text-[11px] font-medium text-[#f7eec8] shrink-0 cursor-pointer"
               >
                 <img src={demo.url} alt={demo.name} className="h-4 w-4 rounded-full object-cover" />
                 <span>{demo.name}</span>
@@ -153,4 +150,3 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     </div>
   );
 };
-

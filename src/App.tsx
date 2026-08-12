@@ -1,31 +1,49 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { CardConfig, FormatType, CardSide, FrameStyle, ThemeStyle, PhotoTransform, BuilderData } from './types';
-import { Header } from './components/Header';
-import { FormatSelector } from './components/FormatSelector';
-import { PhotoUploader } from './components/PhotoUploader';
+import { Hero } from './components/experience/Hero';
+import { GoaBeach } from './components/experience/GoaBeach';
+import { PhotoStep } from './components/experience/PhotoStep';
+import { LoreStep } from './components/experience/LoreStep';
+import { VibeStep } from './components/experience/VibeStep';
+import { LiveCard } from './components/experience/LiveCard';
+import { FinalOverlay } from './components/experience/FinalOverlay';
 import { PhotoAdjuster } from './components/PhotoAdjuster';
-import { BadgeForm } from './components/BadgeForm';
-import { ThemeAndStylePicker } from './components/ThemeAndStylePicker';
-import { GraphicPreview } from './components/GraphicPreview';
-import { PresetGallery } from './components/PresetGallery';
 import { loadImage } from './utils/heicConverter';
-import { SlidersHorizontal, Eye, Download } from 'lucide-react';
+import { ArrowDown, Rocket, SlidersHorizontal } from 'lucide-react';
+
+const EMPTY_BUILDER: BuilderData = {
+  name: '',
+  handle: '',
+  role: '',
+  stack: '',
+  builderTitle: '',
+  statusTag: 'VERIFIED BUILDER',
+  qrUrl: '',
+  photoMotto: '',
+  currentlyBuilding: '',
+  sideQuest: '',
+  sleepStatus: '',
+  chaosLevel: 80,
+  poweredBy: '',
+  mostUsedKey: '',
+  favouriteError: '',
+  hindiPunchline: '',
+  backHeadline: '',
+};
 
 export default function App() {
-  // App State Configuration
-  const [format, setFormat] = useState<FormatType>('badge');
+  const [finalOpen, setFinalOpen] = useState(false);
+
+  const [format] = useState<FormatType>('badge');
   const [side, setSide] = useState<CardSide>('both');
-  const [themeStyle, setThemeStyle] = useState<ThemeStyle>('goa_vintage');
-  const [frameStyle, setFrameStyle] = useState<FrameStyle>('sunset_wave');
+  const [themeStyle] = useState<ThemeStyle>('goa_vintage');
+  const [frameStyle] = useState<FrameStyle>('sunset_wave');
 
-  // Mobile Tab State ('editor' or 'preview')
-  const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
-
-  // Photo state
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [photoName, setPhotoName] = useState<string | undefined>(undefined);
   const [userImage, setUserImage] = useState<HTMLImageElement | null>(null);
 
-  // Photo transform controls
   const [photoTransform, setPhotoTransform] = useState<PhotoTransform>({
     x: 0,
     y: 0,
@@ -34,28 +52,8 @@ export default function App() {
     filter: 'none',
   });
 
-  // Builder data fields initialized to empty strings so user can enter custom details
-  const [builder, setBuilder] = useState<BuilderData>({
-    name: '',
-    handle: '',
-    role: '',
-    stack: '',
-    builderTitle: '',
-    statusTag: 'VERIFIED BUILDER',
-    qrUrl: '',
-    photoMotto: '',
-    currentlyBuilding: '',
-    sideQuest: '',
-    sleepStatus: '',
-    chaosLevel: 80,
-    poweredBy: '',
-    mostUsedKey: '',
-    favouriteError: '',
-    hindiPunchline: '',
-    backHeadline: '',
-  });
+  const [builder, setBuilder] = useState<BuilderData>(EMPTY_BUILDER);
 
-  // Load photo element asynchronously whenever photoDataUrl changes
   useEffect(() => {
     if (photoDataUrl) {
       loadImage(photoDataUrl)
@@ -66,11 +64,27 @@ export default function App() {
     }
   }, [photoDataUrl]);
 
-  // Load default initial photo on mount
-  useEffect(() => {
-    const defaultPhoto = '';
-    setPhotoDataUrl(defaultPhoto);
-  }, []);
+  const handlePhotoLoaded = (url: string, name: string) => {
+    setPhotoDataUrl(url);
+    setPhotoName(name);
+  };
+
+  const handleClearPhoto = () => {
+    setPhotoDataUrl(null);
+    setPhotoName(undefined);
+  };
+
+  const handleCreateAnother = () => {
+    setBuilder(EMPTY_BUILDER);
+    setPhotoTransform({ x: 0, y: 0, scale: 1, rotation: 0, filter: 'none' });
+    handleClearPhoto();
+    setFinalOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToBuilder = () => {
+    document.getElementById('builder-top')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const cardConfig: CardConfig = {
     format,
@@ -81,156 +95,256 @@ export default function App() {
     photoTransform,
   };
 
-  const handleApplyPreset = (
-    presetBuilder: Partial<BuilderData>,
-    presetTheme: ThemeStyle,
-    presetFrame: FrameStyle
-  ) => {
-    setBuilder((prev) => ({ ...prev, ...presetBuilder }));
-    setThemeStyle(presetTheme);
-    setFrameStyle(presetFrame);
-  };
-
   return (
-    <div className="min-h-screen bg-[#071712] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#133b2e] via-[#071712] to-[#030c09] text-[#f7eec8] font-sans selection:bg-[#f3c85c] selection:text-[#071712] flex flex-col pb-16 lg:pb-0">
-      {/* Navbar Header */}
-      <Header />
+    <div className="min-h-screen bg-[#050807] text-[#f7eec8] antialiased">
+      {/* global film grain */}
+      <div className="grain-overlay" aria-hidden />
 
-      {/* Main Container */}
-      <main className="flex-1 mx-auto max-w-7xl w-full px-3 sm:px-8 py-4 sm:py-5 space-y-4 sm:space-y-5">
-        {/* Mobile Navigation Segmented Switcher (< lg) */}
-        <div className="lg:hidden flex rounded-xl bg-[#0b211a] p-1 border border-[#d4af37]/30 sticky top-2 z-30 shadow-lg">
-          <button
-            type="button"
-            onClick={() => setMobileTab('editor')}
-            className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              mobileTab === 'editor'
-                ? 'bg-[#153a2d] text-[#f3c85c] shadow-sm border border-[#d4af37]/40 font-bold'
-                : 'text-[#a2b8ad] hover:text-[#f7eec8]'
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Customize Details</span>
-          </button>
+      {/* ── 01 HERO ── */}
+      <Hero onEnter={scrollToBuilder} />
 
-          <button
-            type="button"
-            onClick={() => setMobileTab('preview')}
-            className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              mobileTab === 'preview'
-                ? 'bg-[#153a2d] text-[#f3c85c] shadow-sm border border-[#d4af37]/40 font-bold'
-                : 'text-[#a2b8ad] hover:text-[#f7eec8]'
-            }`}
-          >
-            <Eye className="h-4 w-4" />
-            <span>View Graphic Canvas</span>
-          </button>
+      {/* ── 02 BUILDER ── */}
+      <section id="builder-top" className="relative">
+        {/* arrival band: the beach darkening into the UI */}
+        <div className="relative h-[46vh] min-h-[320px] w-full overflow-hidden">
+          <GoaBeach dim={0.55} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#050807] via-[#050807]/45 to-[#050807]" />
+          <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
+            <motion.p
+              className="mono-tag text-[#f3c85c]"
+              initial={{ opacity: 0, letterSpacing: '0.6em' }}
+              whileInView={{ opacity: 1, letterSpacing: '0.22em' }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            >
+              GOA / 2026
+            </motion.p>
+            <motion.h2
+              className="font-display mt-2 text-[clamp(2rem,7vw,4.5rem)] leading-none text-[#f7eec8] glow-gold"
+              initial={{ opacity: 0, y: 26 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
+              YOUR BUILDER IS READY
+            </motion.h2>
+            <motion.p
+              className="mono-tag mt-3 flex items-center gap-2 text-[#a2b8ad]"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#f3c85c]" />
+              BUILD STATUS: READY
+            </motion.p>
+            <motion.div
+              className="absolute bottom-4"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 }}
+            >
+              <ArrowDown className="h-4 w-4 animate-bounce text-[#a2b8ad]" />
+            </motion.div>
+          </div>
         </div>
 
-        {/* Studio Workspace Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-          {/* Controls Column (Left) */}
-          <div className={`lg:col-span-6 space-y-4 sm:space-y-5 ${mobileTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
-            {/* Format & Side Selector */}
-            <FormatSelector
-              currentFormat={format}
-              currentSide={side}
-              onSelectFormat={setFormat}
-              onSelectSide={setSide}
-            />
+        {/* builder body */}
+        <main className="mx-auto w-full max-w-7xl px-4 pb-24 sm:px-8">
+          <div className="grid grid-cols-1 gap-10 pt-14 lg:grid-cols-12">
+            {/* Left column — progressive steps */}
+            <div className="space-y-16 lg:col-span-7">
+              {/* STEP 01 — PHOTO */}
+              <StepSection
+                index="01"
+                label="YOUR PHOTO"
+                status={photoDataUrl ? 'DONE' : 'PENDING'}
+                hint={photoDataUrl ? 'PIXELS INCOMING...' : 'THE FACE OF THE CARD'}
+              >
+                <PhotoStep
+                  hasPhoto={!!photoDataUrl}
+                  photoName={photoName}
+                  onPhotoLoaded={handlePhotoLoaded}
+                  onClear={handleClearPhoto}
+                />
+              </StepSection>
 
-            {/* Photo Uploader */}
-            <PhotoUploader
-              onPhotoLoaded={(url) => setPhotoDataUrl(url)}
-              hasPhoto={!!photoDataUrl}
-            />
+              {/* STEP 02 — LORE */}
+              <StepSection
+                index="02"
+                label="YOUR LORE"
+                status={builder.name ? 'DONE' : 'PENDING'}
+                hint="WHO ARE YOU IN GOA?"
+              >
+                <LoreStep builder={builder} onChangeBuilder={setBuilder} />
+              </StepSection>
 
-            {/* Photo Adjuster */}
-            {photoDataUrl && (
-              <PhotoAdjuster
-                transform={photoTransform}
-                onChangeTransform={setPhotoTransform}
-                photoDataUrl={photoDataUrl}
-              />
-            )}
+              {/* STEP 03 — VIBE */}
+              <StepSection
+                index="03"
+                label="SET THE VIBE"
+                status={photoTransform.filter !== 'none' ? 'DONE' : 'DEFAULT'}
+                hint="COLOR THE WORLD"
+              >
+                <VibeStep
+                  value={photoTransform.filter}
+                  onChange={(filter) => setPhotoTransform({ ...photoTransform, filter })}
+                  photoDataUrl={photoDataUrl}
+                  hasPhoto={!!photoDataUrl}
+                />
+              </StepSection>
 
-            {/* Builder Data Form */}
-            <BadgeForm
-              builder={builder}
-              onChangeBuilder={setBuilder}
-              isBadgeFormat={format === 'badge'}
-            />
-          </div>
+              {/* fine-tune (collapsible) */}
+              {photoDataUrl && (
+                <details className="group rounded-2xl border border-[#d4af37]/20 bg-[#071712]/40">
+                  <summary className="mono-tag flex list-none cursor-pointer items-center justify-between px-5 py-4 text-[#a2b8ad] transition-colors hover:text-[#f3c85c]">
+                    <span className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      FINE-TUNE POSITION
+                    </span>
+                    <span className="text-[#3f5a50]">OPTIONAL</span>
+                  </summary>
+                  <div className="px-5 pb-5">
+                    <PhotoAdjuster
+                      transform={photoTransform}
+                      onChangeTransform={setPhotoTransform}
+                      photoDataUrl={photoDataUrl}
+                    />
+                  </div>
+                </details>
+              )}
 
-          {/* Canvas Live Preview Column (Right) */}
-          <div className={`lg:col-span-6 lg:sticky lg:top-6 space-y-4 flex flex-col items-center ${mobileTab === 'editor' ? 'hidden lg:flex' : 'flex'}`}>
-            <div className="w-full bg-[#0c221a]/90 backdrop-blur-md rounded-2xl border border-[#d4af37]/30 p-3.5 sm:p-5 shadow-xl flex flex-col items-center">
-              <div className="flex items-center justify-between w-full mb-3 pb-2 border-b border-[#d4af37]/20">
-                <div className="flex items-center gap-2 font-semibold text-[#f3c85c] text-xs uppercase tracking-wider">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Goa Live Canvas Preview</span>
+              {/* READY TO SHIP */}
+              <section className="relative overflow-hidden rounded-2xl border border-[#d4af37]/30 bg-gradient-to-br from-[#0b211a] via-[#071712] to-[#1a0d14] px-6 py-12 text-center">
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      'radial-gradient(circle at 50% 120%, rgba(255,92,138,0.16), transparent 60%)',
+                  }}
+                />
+                <p className="mono-tag text-[#f3c85c]">CURRENTLY COOKING...</p>
+                <h3 className="font-display mt-3 text-[clamp(1.8rem,5vw,3rem)] leading-none text-[#f7eec8] glow-pink">
+                  READY TO SHIP?
+                </h3>
+                <p className="mono-tag mt-3 text-[#a2b8ad]">
+                  {builder.name
+                    ? `PIXELS LOOK GOOD ✓ · ${builder.name.toUpperCase()}`
+                    : 'NAME OPTIONAL — SHIP ANYWAY'}
+                </p>
+                <motion.button
+                  type="button"
+                  onClick={() => setFinalOpen(true)}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="mt-7 inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#f3c85c] to-[#ffb26b] px-10 py-4 font-display text-base tracking-[0.18em] text-[#071712] shadow-[0_0_40px_rgba(243,200,92,0.35)] transition-shadow hover:shadow-[0_0_60px_rgba(255,92,138,0.4)] cursor-pointer"
+                >
+                  <Rocket className="h-5 w-5" />
+                  BUILD MY ID →
+                </motion.button>
+                <p className="mono-tag mt-5 text-[#3f5a50]">404 — SLEEP NOT FOUND</p>
+              </section>
+            </div>
+
+            {/* Right column — live card (sticky) */}
+            <div className="lg:col-span-5">
+              <div className="lg:sticky lg:top-10">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="font-display text-sm tracking-wider text-[#a2b8ad]">LIVE ID</span>
+                  <span className="mono-tag text-[#3f5a50]">
+                    {builder.name ? builder.name.toUpperCase() : 'UNNAMED BUILDER'}
+                  </span>
                 </div>
-                <span className="text-[11px] font-mono text-[#a2b8ad]">1200 x 1200 px</span>
-              </div>
 
-              {/* Graphic Canvas Display */}
-              <GraphicPreview
-                config={cardConfig}
-                userImage={userImage}
-                onRefreshPhoto={() => setPhotoDataUrl(null)}
-              />
+                <AnimatePresence mode="wait">
+                  {photoDataUrl ? (
+                    <motion.div
+                      key="card"
+                      initial={{ opacity: 0, scale: 0.9, y: 24 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <LiveCard config={cardConfig} userImage={userImage} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="placeholder"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      className="flex aspect-[12/18.6] w-full max-w-[330px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#d4af37]/25 bg-[#071712]/40 px-6 text-center"
+                    >
+                      <span className="font-display text-2xl text-[#3f5a50]">ID</span>
+                      <p className="text-xs text-[#a2b8ad]">
+                        your card assembles here
+                        <br />
+                        the moment you drop a photo
+                      </p>
+                      <span className="mono-tag text-[#3f5a50]">AWAITING INPUT...</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <p className="mono-tag mt-5 text-center text-[#3f5a50]">
+                  CLICK CARD TO FLIP · FRONT / BACK
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </section>
 
-      {/* Floating Bottom Navigation Bar for Mobile (< lg) */}
-      <div className="lg:hidden fixed bottom-3 left-3 right-3 z-40 flex items-center justify-between gap-2 p-2 bg-[#091d17]/95 backdrop-blur-md rounded-2xl border border-[#d4af37]/40 shadow-2xl">
-        <button
-          type="button"
-          onClick={() => setMobileTab(mobileTab === 'editor' ? 'preview' : 'editor')}
-          className="flex-1 py-2 px-3 rounded-xl bg-[#14362b] border border-[#d4af37]/30 text-[#f7eec8] text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
-        >
-          {mobileTab === 'editor' ? (
-            <>
-              <Eye className="h-4 w-4 text-[#f3c85c]" />
-              <span>See Live Preview</span>
-            </>
-          ) : (
-            <>
-              <SlidersHorizontal className="h-4 w-4 text-[#f3c85c]" />
-              <span>Edit Details</span>
-            </>
-          )}
-        </button>
-
-        {mobileTab === 'editor' && (
-          <button
-            type="button"
-            onClick={() => setMobileTab('preview')}
-            className="flex-1 py-2 px-3 rounded-xl bg-[#f3c85c] text-[#071712] text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm cursor-pointer"
-          >
-            <Download className="h-4 w-4 stroke-[2.5]" />
-            <span>Download PNG</span>
-          </button>
+      {/* ── 03 FINAL STAGE ── */}
+      <AnimatePresence>
+        {finalOpen && (
+          <FinalOverlay
+            key="final"
+            config={cardConfig}
+            userImage={userImage}
+            onExit={() => setFinalOpen(false)}
+            onCreateAnother={handleCreateAnother}
+          />
         )}
-      </div>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-[#d4af37]/20 bg-[#040e0b] py-4 text-center text-xs text-[#a2b8ad]">
-        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <p className="text-[11px] text-[#a2b8ad]">
-            Built for <span className="text-[#f3c85c] font-semibold">Hacker House Goa 2026 Shortlisting Task</span> • #FrameInGoa
-          </p>
-          <div className="flex items-center gap-3 text-[11px] text-[#c9b99a] font-medium">
-            <span>Deadline: Aug 13, 2026</span>
-            <span>•</span>
-            <a href="https://forms.gle/jM5hTaGvsrfEfixPA" target="_blank" rel="noreferrer" className="text-[#f3c85c] font-bold hover:underline">
-              Submit Form 🌴
-            </a>
-          </div>
-        </div>
-      </footer>
+      </AnimatePresence>
     </div>
   );
 }
+
+interface StepSectionProps {
+  index: string;
+  label: string;
+  status: string;
+  hint: string;
+  children: React.ReactNode;
+}
+
+const StepSection: React.FC<StepSectionProps> = ({ index, label, status, hint, children }) => (
+  <section>
+    <div className="mb-5 flex items-end justify-between">
+      <div className="flex items-baseline gap-4">
+        <span
+          className="font-display text-5xl text-transparent"
+          style={{ WebkitTextStroke: '1.5px rgba(243,200,92,0.55)' }}
+        >
+          {index}
+        </span>
+        <div>
+          <h3 className="font-display text-xl tracking-wider text-[#f7eec8]">{label}</h3>
+          <p className="mono-tag mt-1 text-[#3f5a50]">{hint}</p>
+        </div>
+      </div>
+      <span
+        className={`mono-tag rounded-full border px-3 py-1 ${
+          status === 'PENDING'
+            ? 'border-[#d4af37]/25 text-[#3f5a50]'
+            : 'border-[#f3c85c]/50 text-[#f3c85c]'
+        }`}
+      >
+        {status}
+      </span>
+    </div>
+    {children}
+  </section>
+);
