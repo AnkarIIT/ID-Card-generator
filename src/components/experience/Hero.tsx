@@ -27,6 +27,8 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
       <div className="vignette absolute inset-0" />
       {/* deep color grade on top */}
       <div className="absolute inset-0 bg-[#050807]/35" />
+      {/* CRT scanlines */}
+      <div className="scanlines pointer-events-none absolute inset-0" />
 
       {/* sun glow pulse behind title */}
       <motion.div
@@ -52,10 +54,12 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
           alt="Hacker House Goa"
           className="h-10 w-10 object-cover"
         />
-        <span className="hidden flex-col sm:flex">
-          <span className="mono-tag text-[#a2b8ad]">Hacker House</span>
-          <span className="mono-tag text-[#f3c85c]">Goa / 2026</span>
-        </span>
+        <div className="hidden sm:block">
+          <span className="block font-display text-lg leading-none text-[#f7eec8] glow-gold">
+            Hacker House
+          </span>
+          <span className="mono-tag mt-1 block text-[#f3c85c]">Goa / 2026</span>
+        </div>
       </motion.div>
 
       {/* top-right dates */}
@@ -81,7 +85,7 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
         </motion.p>
 
         <motion.h1
-          className="font-display text-[clamp(3rem,11vw,9rem)] leading-[0.95] text-[#f7eec8]"
+          className="font-display text-[clamp(3rem,11vw,9rem)] leading-[0.95] text-[#f7eec8] glow-pink"
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.55, duration: 0.8, ease: EASE }}
@@ -91,7 +95,10 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
 
         <motion.p
           className="font-display text-[clamp(2.4rem,8vw,6.5rem)] leading-none text-transparent"
-          style={{ WebkitTextStroke: '1.5px rgba(243,200,92,0.85)' }}
+          style={{
+            WebkitTextStroke: '1.5px rgba(255,180,80,0.9)',
+            textShadow: '0 0 30px rgba(255,150,70,0.35)',
+          }}
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.85, duration: 0.8, ease: EASE }}
@@ -132,16 +139,16 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
           <button
             type="button"
             onClick={onEnter}
-            className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-[#f3c85c] px-8 py-3.5 font-display text-sm tracking-[0.18em] text-[#071712] transition-all duration-300 hover:shadow-[0_0_40px_rgba(243,200,92,0.45)] active:scale-95 cursor-pointer"
+            className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full bg-[#c8ff3d] px-9 py-3.5 font-display text-sm tracking-[0.18em] text-[#071712] shadow-[0_0_40px_rgba(200,255,61,0.4)] transition-all duration-300 hover:shadow-[0_0_60px_rgba(200,255,61,0.55)] hover:brightness-105 active:scale-95 cursor-pointer"
           >
+            <span>⚡</span>
             <span>START BUILDING</span>
-            <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
           </button>
         </motion.div>
 
         <motion.p
-          className="mono-tag mt-6 text-[#3f5a50]"
+          className="mono-tag mt-6 text-[#a2b8ad]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 3.4, duration: 0.6 }}
@@ -149,6 +156,10 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
           NO LOGIN. NO BS.
         </motion.p>
       </div>
+
+      {/* bottom retro grid transition */}
+      <div className="retro-grid pointer-events-none absolute bottom-0 left-0 right-0 z-[5] h-[34vh] w-full opacity-70" />
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[6] h-28 bg-gradient-to-t from-[#050807] to-transparent" />
 
       {/* scroll hint */}
       <motion.button

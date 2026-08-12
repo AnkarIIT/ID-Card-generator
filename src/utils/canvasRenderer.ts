@@ -257,13 +257,13 @@ export const CARD_LAYOUT = {
     },
     role: {
       section: { x: 28, y: 753, width: 463, height: 94 },
-      textSafeArea: { x: 125, y: 785, width: 330, height: 45 },
+      textSafeArea: { x: 190, y: 785, width: 255, height: 45 },
       align: 'left' as const,
       verticalAlign: 'middle' as const,
     },
     builderTitle: {
       section: { x: 28, y: 858, width: 463, height: 201 },
-      textSafeArea: { x: 55, y: 925, width: 400, height: 105 },
+      textSafeArea: { x: 95, y: 925, width: 360, height: 105 },
       align: 'left' as const,
       verticalAlign: 'middle' as const,
     },
@@ -283,12 +283,6 @@ export const CARD_LAYOUT = {
       section: { x: 552, y: 875, width: 320, height: 38 },
       textSafeArea: { x: 565, y: 879, width: 295, height: 30 },
       align: 'center' as const,
-      verticalAlign: 'middle' as const,
-    },
-    chaos: {
-      section: { x: 493, y: 927, width: 499, height: 120 },
-      textSafeArea: { x: 525, y: 980, width: 400, height: 45 },
-      align: 'left' as const,
       verticalAlign: 'middle' as const,
     },
     poweredBy: {
@@ -542,50 +536,6 @@ export function drawTextInBox(
 /**
  * Custom Chaos Level UI Progress Bar Renderer
  */
-function drawChaosLevelUI(
-  ctx: CanvasRenderingContext2D,
-  box: TextBox,
-  chaosValue: number,
-  palette: ReturnType<typeof getThemePalette>
-) {
-  const level = Math.min(100, Math.max(0, chaosValue ?? 65));
-
-  ctx.save();
-  const totalBlocks = 10;
-  const filledBlocks = Math.round((level / 100) * totalBlocks);
-
-  const labelText = `${level}%`;
-  ctx.font = '900 24px monospace';
-  const labelWidth = ctx.measureText(labelText).width + 16;
-
-  const blockAreaWidth = box.width - labelWidth;
-  const blockW = Math.max(8, Math.floor((blockAreaWidth - (totalBlocks - 1) * 6) / totalBlocks));
-  const blockH = 26;
-  const startX = box.x;
-  const startY = box.y + (box.height - blockH) / 2;
-
-  // Draw Progress Blocks
-  for (let i = 0; i < totalBlocks; i++) {
-    const bx = startX + i * (blockW + 6);
-    if (i < filledBlocks) {
-      ctx.fillStyle = palette.redAccent;
-    } else {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    }
-    drawRoundedRect(ctx, bx, startY, blockW, blockH, 4);
-    ctx.fill();
-  }
-
-  // Draw Percentage Label
-  ctx.fillStyle = palette.yellowText;
-  ctx.font = '900 24px monospace';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(labelText, box.x + box.width, startY + blockH / 2);
-
-  ctx.restore();
-}
-
 /**
  * DEBUG OVERLAY MODE (Mandatory feature)
  */
@@ -669,7 +619,13 @@ export async function renderGraphicOnCanvas(
   const frontFrameOverlay = await getFrontFrameOverlayImage();
 
   let qrImg = qrImage || null;
-  if (!qrImg && config.format === 'badge' && (config.side === 'back' || config.side === 'both')) {
+  const hasXHandle = (config.builder.handle || '').trim().length > 0;
+  if (
+    !qrImg &&
+    config.format === 'badge' &&
+    (config.side === 'back' || config.side === 'both') &&
+    hasXHandle
+  ) {
     qrImg = await getQrCodeImage(config.builder.qrUrl || '', config.builder.handle || '');
   }
 
@@ -933,7 +889,7 @@ function renderFrontBadge(
   // STEP 5: Draw dynamic text inside textSafeAreas
 
   // 1. NAME
-  drawTextInBox(ctx, b.name || 'BAUNA KUMAR', f.name.textSafeArea, {
+  drawTextInBox(ctx, b.name, f.name.textSafeArea, {
     maxFontSize: 64,
     minFontSize: 18,
     fontWeight: '900',
@@ -945,7 +901,7 @@ function renderFrontBadge(
   });
 
   // 2. ROLE
-  drawTextInBox(ctx, b.role || 'MEMBER', f.role.textSafeArea, {
+  drawTextInBox(ctx, b.role, f.role.textSafeArea, {
     maxFontSize: 30,
     minFontSize: 12,
     fontWeight: '900',
@@ -957,8 +913,8 @@ function renderFrontBadge(
   });
 
   // 3. BUILDER TITLE
-  drawTextInBox(ctx, b.builderTitle || 'CREATIVE DEVELOPER', f.builderTitle.textSafeArea, {
-    maxFontSize: 30,
+  drawTextInBox(ctx, b.builderTitle, f.builderTitle.textSafeArea, {
+    maxFontSize: 25,
     minFontSize: 12,
     fontWeight: '900',
     maxLines: 3,
@@ -968,7 +924,7 @@ function renderFrontBadge(
   });
 
   // 4. CURRENTLY BUILDING
-  drawTextInBox(ctx, b.currentlyBuilding || 'Awesome Next.js App', f.building.textSafeArea, {
+  drawTextInBox(ctx, b.currentlyBuilding, f.building.textSafeArea, {
     maxFontSize: 26,
     minFontSize: 11,
     fontWeight: '800',
@@ -979,7 +935,7 @@ function renderFrontBadge(
   });
 
   // 5. SIDE QUEST
-  drawTextInBox(ctx, b.sideQuest || 'STARTUPS • TRAVEL • ANIME • FOOD', f.sideQuest.textSafeArea, {
+  drawTextInBox(ctx, b.sideQuest, f.sideQuest.textSafeArea, {
     maxFontSize: 26,
     minFontSize: 11,
     fontWeight: '800',
@@ -991,11 +947,8 @@ function renderFrontBadge(
 
   // 6. HHG26-ID STRIP (Pre-printed in template background)
 
-  // 7. CHAOS LEVEL
-  drawChaosLevelUI(ctx, f.chaos.textSafeArea, b.chaosLevel ?? 65, p);
-
-  // 8. POWERED BY
-  drawTextInBox(ctx, b.poweredBy || 'Chai + Jugaad + Decisions', f.poweredBy.textSafeArea, {
+  // 7. POWERED BY
+  drawTextInBox(ctx, b.poweredBy, f.poweredBy.textSafeArea, {
     maxFontSize: 26,
     minFontSize: 11,
     fontWeight: '800',
@@ -1005,7 +958,7 @@ function renderFrontBadge(
     color: p.creamText,
   });
 
-  // 9. MOST USED KEY
+  // 7. MOST USED KEY
   if (b.mostUsedKey && b.mostUsedKey.trim()) {
     drawTextInBox(ctx, b.mostUsedKey, f.mostUsedKey.textSafeArea, {
       maxFontSize: 24,
@@ -1018,7 +971,7 @@ function renderFrontBadge(
     });
   }
 
-  // 10. FAVOURITE ERROR
+  // 8. FAVOURITE ERROR
   if (b.favouriteError && b.favouriteError.trim()) {
     drawTextInBox(ctx, b.favouriteError, f.favoriteError.textSafeArea, {
       maxFontSize: 32,

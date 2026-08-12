@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CardConfig, FormatType, CardSide, FrameStyle, ThemeStyle, PhotoTransform, BuilderData } from './types';
 import { Hero } from './components/experience/Hero';
-import { GoaBeach } from './components/experience/GoaBeach';
 import { PhotoStep } from './components/experience/PhotoStep';
 import { LoreStep } from './components/experience/LoreStep';
 import { VibeStep } from './components/experience/VibeStep';
@@ -107,7 +106,9 @@ export default function App() {
       <section id="builder-top" className="relative">
         {/* arrival band: the beach darkening into the UI */}
         <div className="relative h-[46vh] min-h-[320px] w-full overflow-hidden">
-          <GoaBeach dim={0.55} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#050807] via-[#0a1a14] to-[#050807]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,120,80,0.12),transparent_60%)]" />
+          <div className="scanlines pointer-events-none absolute inset-0 opacity-60" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#050807] via-[#050807]/45 to-[#050807]" />
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
             <motion.p
@@ -117,7 +118,7 @@ export default function App() {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              GOA / 2026
+              GOA IS ONNNNN!
             </motion.p>
             <motion.h2
               className="font-display mt-2 text-[clamp(2rem,7vw,4.5rem)] leading-none text-[#f7eec8] glow-gold"
@@ -253,7 +254,7 @@ export default function App() {
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-display text-sm tracking-wider text-[#a2b8ad]">LIVE ID</span>
                   <span className="mono-tag text-[#3f5a50]">
-                    {builder.name ? builder.name.toUpperCase() : 'UNNAMED BUILDER'}
+                    {builder.name ? builder.name.toUpperCase() : ''}
                   </span>
                 </div>
 
