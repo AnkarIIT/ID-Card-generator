@@ -102,7 +102,7 @@ export default function App() {
       <Hero onEnter={scrollToBuilder} />
 
       {/* ── 02 BUILDER ── */}
-      <section id="builder-top" className="relative">
+      <section id="builder-top" className="relative z-10 bg-[#050807]">
         {/* arrival band: the beach darkening into the UI */}
         <div className="relative h-[46vh] min-h-[320px] w-full overflow-hidden">
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
@@ -276,7 +276,7 @@ export default function App() {
       </section>
 
       {/* ── 03 FOOTER ── */}
-      <footer className="border-t border-[#d4af37]/20 bg-[#050807]">
+      <footer className="relative z-10 border-t border-[#d4af37]/20 bg-[#050807]">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-center sm:flex-row sm:px-8 sm:text-left">
           <span className="mono-tag text-[#a2b8ad]">
             SYS / HHGOA26
