@@ -74,7 +74,7 @@ export async function getQrCodeImage(url: string, handleFallback?: string): Prom
   try {
     const dataUrl = await QRCode.toDataURL(targetUrl, {
       margin: 2,
-      width: 372, // QR code size 2% smaller
+      width: 350, // QR code size matching renderBackBadge
       color: {
         dark: '#1e1b18',
         light: '#fbf3dc',
@@ -1127,8 +1127,8 @@ function renderBackBadge(
   }
 
   // QR Code Position for 1024x1536 canvas
-  // QR code must fit entirely within the placeholder box - smaller size
-  const qrSize = 372; // 2% smaller
+  // QR code must fit entirely within the placeholder box in back.jpeg
+  const qrSize = 350; // Smaller to fit within placeholder bounds
   const qrX = (w - qrSize) / 2;
   const qrY = (h - qrSize) / 2;
 
