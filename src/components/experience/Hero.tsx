@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { GoaBeach } from './GoaBeach';
 
 interface HeroProps {
   onEnter: () => void;
@@ -13,29 +12,28 @@ const HEADLINE = ['FRAME', 'YOUR', 'IDENTITY.'];
 export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
   return (
     <section className="relative h-[100svh] w-full overflow-hidden bg-[#050807]">
-      {/* Beach */}
+      {/* Hero Background Image */}
       <motion.div
         className="absolute inset-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       >
-        <GoaBeach className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src="/src/images/hero.png"
+          alt="Hero Background"
+          className="h-full w-full object-cover opacity-100"
+        />
+        {/* Subtle dark gradient overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050807]/30 via-transparent to-[#050807]/60" />
       </motion.div>
-
-      {/* vignette */}
-      <div className="vignette absolute inset-0" />
-      {/* deep color grade on top */}
-      <div className="absolute inset-0 bg-[#050807]/35" />
-      {/* CRT scanlines */}
-      <div className="scanlines pointer-events-none absolute inset-0" />
 
       {/* sun glow pulse behind title */}
       <motion.div
         className="pointer-events-none absolute left-1/2 top-[38%] h-[46vh] w-[70vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
           background:
-            'radial-gradient(closest-side, rgba(255,175,95,0.22), rgba(255,145,90,0.10) 38%, rgba(255,130,80,0.04) 68%, transparent 100%)',
+            'radial-gradient(closest-side, rgba(255,175,95,0.15), rgba(255,145,90,0.06) 38%, rgba(255,130,80,0.02) 68%, transparent 100%)',
         }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -156,9 +154,7 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
           NO LOGIN. NO BS.
         </motion.p>
       </div>
-
-      {/* bottom retro grid transition */}
-      <div className="retro-grid pointer-events-none absolute bottom-0 left-0 right-0 z-[5] h-[34vh] w-full opacity-70" />
+      {/* bottom transition fade */}
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[6] h-28 bg-gradient-to-t from-[#050807] to-transparent" />
 
       {/* scroll hint */}
