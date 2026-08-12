@@ -7,9 +7,8 @@ import { LoreStep } from './components/experience/LoreStep';
 import { VibeStep } from './components/experience/VibeStep';
 import { LiveCard } from './components/experience/LiveCard';
 import { FinalOverlay } from './components/experience/FinalOverlay';
-import { PhotoAdjuster } from './components/PhotoAdjuster';
 import { loadImage } from './utils/heicConverter';
-import { ArrowDown, Rocket, SlidersHorizontal } from 'lucide-react';
+import { ArrowDown, Rocket } from 'lucide-react';
 
 const EMPTY_BUILDER: BuilderData = {
   name: '',
@@ -106,10 +105,6 @@ export default function App() {
       <section id="builder-top" className="relative">
         {/* arrival band: the beach darkening into the UI */}
         <div className="relative h-[46vh] min-h-[320px] w-full overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050807] via-[#0a1a14] to-[#050807]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,120,80,0.12),transparent_60%)]" />
-          <div className="scanlines pointer-events-none absolute inset-0 opacity-60" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050807] via-[#050807]/45 to-[#050807]" />
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
             <motion.p
               className="mono-tag text-[#f3c85c]"
@@ -166,6 +161,9 @@ export default function App() {
                 <PhotoStep
                   hasPhoto={!!photoDataUrl}
                   photoName={photoName}
+                  photoDataUrl={photoDataUrl}
+                  transform={photoTransform}
+                  onChangeTransform={setPhotoTransform}
                   onPhotoLoaded={handlePhotoLoaded}
                   onClear={handleClearPhoto}
                 />
@@ -195,26 +193,6 @@ export default function App() {
                   hasPhoto={!!photoDataUrl}
                 />
               </StepSection>
-
-              {/* fine-tune (collapsible) */}
-              {photoDataUrl && (
-                <details className="group rounded-2xl border border-[#d4af37]/20 bg-[#071712]/40">
-                  <summary className="mono-tag flex list-none cursor-pointer items-center justify-between px-5 py-4 text-[#a2b8ad] transition-colors hover:text-[#f3c85c]">
-                    <span className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
-                      FINE-TUNE POSITION
-                    </span>
-                    <span className="text-[#3f5a50]">OPTIONAL</span>
-                  </summary>
-                  <div className="px-5 pb-5">
-                    <PhotoAdjuster
-                      transform={photoTransform}
-                      onChangeTransform={setPhotoTransform}
-                      photoDataUrl={photoDataUrl}
-                    />
-                  </div>
-                </details>
-              )}
 
               {/* READY TO SHIP */}
               <section className="relative overflow-hidden rounded-2xl border border-[#d4af37]/30 bg-gradient-to-br from-[#0b211a] via-[#071712] to-[#1a0d14] px-6 py-12 text-center">
