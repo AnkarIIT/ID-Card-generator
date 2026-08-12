@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
+import heroImg from '/images/hero.png';
+import logoImg from '/images/logo.jpg';
 
 interface HeroProps {
   onEnter: () => void;
@@ -46,7 +48,7 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
           transition={{ duration: 0.8, ease: 'easeOut' }}
         >
           <img
-            src="/src/images/hero.png"
+            src={heroImg}
             alt="Hero Background"
             className="h-full w-full object-cover"
           />
@@ -74,7 +76,7 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
           transition={{ delay: 1.1, duration: 0.6, ease: 'easeOut' }}
         >
           <img
-            src="/src/images/logo.jpg"
+            src={logoImg}
             alt="Hacker House Goa"
             className="h-10 w-10 object-cover"
           />

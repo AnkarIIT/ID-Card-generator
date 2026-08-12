@@ -1,4 +1,5 @@
 import React from 'react';
+import logoImg from '../images/logo.jpg';
 
 export const Header: React.FC = () => {
   return (
@@ -7,7 +8,7 @@ export const Header: React.FC = () => {
         {/* Brand - Minimal */}
         <div className="flex items-center gap-3">
           <img
-            src="/src/images/logo.jpg"
+            src={logoImg}
             alt="Hacker House Goa"
             className="h-8 w-8 object-cover sm:h-9 sm:w-9"
           />
