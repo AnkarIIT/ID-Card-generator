@@ -1,6 +1,7 @@
 import { CardConfig, PhotoTransform } from '../types';
 import QRCode from 'qrcode';
 import { extractXHandle, formatQrUrl } from './urlUtils';
+import { generateUserUuid } from './generateUserUuid';
 import frontImageUrl from '../images/front.png';
 import backImageUrl from '../images/back.jpeg';
 import frontGoldFrameImageUrl from '../images/front_gold_frame.png';
@@ -945,7 +946,19 @@ function renderFrontBadge(
     color: p.creamText,
   });
 
-  // 6. HHG26-ID STRIP (Pre-printed in template background)
+  // 6. HHG26-ID STRIP — dynamically generated UUID printed inside the existing yellow box
+  const userUuid = generateUserUuid();
+  drawTextInBox(ctx, userUuid, f.id.textSafeArea, {
+    maxFontSize: 22,
+    minFontSize: 16,
+    fontWeight: '800',
+    maxLines: 1,
+    verticalAlign: f.id.verticalAlign,
+    textAlign: f.id.align,
+    transform: 'uppercase',
+    color: '#2a1d05',
+    fontFamily: 'monospace',
+  });
 
   // 7. POWERED BY
   drawTextInBox(ctx, b.poweredBy, f.poweredBy.textSafeArea, {

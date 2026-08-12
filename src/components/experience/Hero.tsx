@@ -142,24 +142,24 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
               >
                 {word}
               </motion.span>
-            ))}
-          </div>
+))}
+            </div>
 
           <motion.p
-            className="mt-4 max-w-md text-sm text-[#a2b8ad] sm:text-base"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.9, duration: 0.7 }}
-          >
-            Build your Goa identity. Take it with you.
-          </motion.p>
+              className="mt-4 max-w-md text-sm text-[#a2b8ad] sm:text-base"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.9, duration: 0.7 }}
+            >
+              Build your Goa identity. Take it with you.
+            </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.8, duration: 0.7, ease: EASE }}
-            className="mt-9"
-          >
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 2.8, duration: 0.7, ease: EASE }}
+              className="mt-9"
+            >
             <button
               type="button"
               onClick={onEnter}
