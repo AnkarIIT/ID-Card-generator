@@ -296,7 +296,21 @@ export default function App() {
         </main>
       </section>
 
-      {/* ── 03 FINAL STAGE ── */}
+      {/* ── 03 FOOTER ── */}
+      <footer className="border-t border-[#d4af37]/20 bg-[#050807]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-center sm:flex-row sm:px-8 sm:text-left">
+          <span className="mono-tag text-[#a2b8ad]">
+            SYS / HHGOA26
+          </span>
+          <span className="mono-tag text-[#a2b8ad]">
+            Made with <span className="text-[#ff5c8a]">❤️</span> by{' '}
+            <span className="text-[#f3c85c]">Baddie Detectors</span>
+          </span>
+          <span className="mono-tag text-[#3f5a50]">28 — 31 OCT · GOA, INDIA</span>
+        </div>
+      </footer>
+
+      {/* ── 04 FINAL STAGE ── */}
       <AnimatePresence>
         {finalOpen && (
           <FinalOverlay

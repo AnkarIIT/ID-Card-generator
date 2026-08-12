@@ -6,9 +6,11 @@ export const Header: React.FC = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Brand - Minimal */}
         <div className="flex items-center gap-3">
-          <span className="font-bold text-xl sm:text-xl text-[#f7eec8] tracking-tight font-mono">
-            HH
-          </span>
+          <img
+            src="/src/images/logo.jpg"
+            alt="Hacker House Goa"
+            className="h-8 w-8 object-cover sm:h-9 sm:w-9"
+          />
           <div className="hidden sm:block">
             <span className="text-[10px] text-[#a2b8ad] font-mono uppercase tracking-wider mb-0.5">
               Hacker House

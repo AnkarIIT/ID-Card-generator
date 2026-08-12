@@ -47,7 +47,11 @@ export const Hero: React.FC<HeroProps> = ({ onEnter }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.1, duration: 0.6, ease: 'easeOut' }}
       >
-        <span className="font-display text-2xl text-[#f7eec8] glow-gold">HH</span>
+        <img
+          src="/src/images/logo.jpg"
+          alt="Hacker House Goa"
+          className="h-10 w-10 object-cover"
+        />
         <span className="hidden flex-col sm:flex">
           <span className="mono-tag text-[#a2b8ad]">Hacker House</span>
           <span className="mono-tag text-[#f3c85c]">Goa / 2026</span>
