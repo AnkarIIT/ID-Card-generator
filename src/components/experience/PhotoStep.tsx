@@ -2,10 +2,15 @@ import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, Loader2, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { processUploadedFile } from '../../utils/heicConverter';
+import { PhotoAdjuster } from '../PhotoAdjuster';
+import { PhotoTransform } from '../../types';
 
 interface PhotoStepProps {
   hasPhoto: boolean;
   photoName?: string;
+  photoDataUrl?: string | null;
+  transform: PhotoTransform;
+  onChangeTransform: (t: PhotoTransform) => void;
   onPhotoLoaded: (dataUrl: string, name: string) => void;
   onClear: () => void;
 }
@@ -28,6 +33,9 @@ const DEMO_AVATARS = [
 export const PhotoStep: React.FC<PhotoStepProps> = ({
   hasPhoto,
   photoName,
+  photoDataUrl,
+  transform,
+  onChangeTransform,
   onPhotoLoaded,
   onClear,
 }) => {
@@ -178,6 +186,22 @@ export const PhotoStep: React.FC<PhotoStepProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {hasPhoto && (
+        <motion.div
+          key="adjuster"
+          className="mt-4"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <PhotoAdjuster
+            transform={transform}
+            onChangeTransform={onChangeTransform}
+            photoDataUrl={photoDataUrl}
+          />
+        </motion.div>
+      )}
 
       {/* demo samples */}
       {!hasPhoto && (

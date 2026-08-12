@@ -58,6 +58,56 @@ export const GoaBeach: React.FC<GoaBeachProps> = ({ dim = 0, className }) => {
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const ease = (t: number) => t * t * (3 - 2 * t);
 
+    const quadPoint = (a: number, b: number, c: number, t: number) =>
+      (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
+
+    // one coconut frond: curved midrib + alternating leaflets
+    const drawFrond = (
+      c: CanvasRenderingContext2D,
+      ox: number,
+      oy: number,
+      ang: number,
+      len: number,
+      droop: number,
+      sway: number,
+      seed: number
+    ) => {
+      const tipX = ox + Math.cos(ang) * len;
+      const tipY = oy + Math.sin(ang) * len + droop;
+      const ctrlX = ox + Math.cos(ang) * len * 0.5 + sway;
+      const ctrlY = oy + Math.sin(ang) * len * 0.5 - len * 0.18;
+
+      // leaflets
+      const count = 12;
+      c.lineWidth = 1.6;
+      for (let i = 0; i < count; i++) {
+        const t = (i + 0.5) / count;
+        const px = quadPoint(ox, ctrlX, tipX, t);
+        const py = quadPoint(oy, ctrlY, tipY, t);
+        // derivative of the quadratic curve (tangent direction)
+        const tx = 2 * (1 - t) * (ctrlX - ox) + 2 * t * (tipX - ctrlX);
+        const ty = 2 * (1 - t) * (ctrlY - oy) + 2 * t * (tipY - ctrlY);
+        const tl = Math.hypot(tx, ty) || 1;
+        const nx = -ty / tl;
+        const ny = tx / tl;
+        const taper = Math.sin(Math.PI * t);
+        const leafLen = 12 + taper * 24;
+        const side = (i + seed) % 2 === 0 ? 1 : -1;
+        const leafAng = Math.atan2(ny * side, nx * side) + 0.32;
+        c.beginPath();
+        c.moveTo(px, py);
+        c.lineTo(px + Math.cos(leafAng) * leafLen, py + Math.sin(leafAng) * leafLen);
+        c.stroke();
+      }
+
+      // midrib on top of the leaflets
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(ox, oy);
+      c.quadraticCurveTo(ctrlX, ctrlY, tipX, tipY);
+      c.stroke();
+    };
+
     const drawPalm = (
       c: CanvasRenderingContext2D,
       x: number,
@@ -72,51 +122,44 @@ export const GoaBeach: React.FC<GoaBeachProps> = ({ dim = 0, className }) => {
       c.fillStyle = '#0d0a12';
       c.strokeStyle = '#0d0a12';
       c.lineCap = 'round';
+      c.lineJoin = 'round';
 
       // trunk — tapered, curved
       const trunkH = 170;
-      c.lineWidth = 9;
-      c.beginPath();
-      c.moveTo(0, 0);
-      c.quadraticCurveTo(lean * 60, -trunkH * 0.55, lean * 110, -trunkH);
-      c.stroke();
-      c.lineWidth = 4;
-      c.beginPath();
-      c.moveTo(0, 0);
-      c.quadraticCurveTo(lean * 60, -trunkH * 0.55, lean * 110, -trunkH);
-      c.stroke();
-
       const topX = lean * 110;
       const topY = -trunkH;
-      const sway = Math.sin(time * 0.5 + x) * 3;
+      c.lineWidth = 10;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(lean * 60, -trunkH * 0.55, topX, topY);
+      c.stroke();
+      c.lineWidth = 5;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(lean * 60, -trunkH * 0.55, topX, topY);
+      c.stroke();
 
-      // fronds
-      const fronds = 7;
-      for (let i = 0; i < fronds; i++) {
-        const ang = -Math.PI + (i / (fronds - 1)) * Math.PI + Math.sin(time * 0.6 + i) * 0.04;
-        const len = 78 + rand(i + 9) * 26;
-        c.lineWidth = 7;
-        c.beginPath();
-        c.moveTo(topX, topY);
-        c.quadraticCurveTo(
-          topX + Math.cos(ang) * len * 0.5 + sway,
-          topY + Math.sin(ang) * len * 0.5 - 22,
-          topX + Math.cos(ang) * len,
-          topY + Math.sin(ang) * len + 18
-        );
-        c.stroke();
-      }
       // trunk rings
-      c.strokeStyle = 'rgba(20,14,24,0.6)';
-      for (let i = 0; i < 8; i++) {
-        const t = i / 8;
+      c.strokeStyle = 'rgba(22,16,26,0.6)';
+      for (let i = 0; i < 9; i++) {
+        const t = i / 9;
         const ty = -trunkH * t * 0.92;
-        const lw = Math.max(2, 8 * (1 - t));
-        c.lineWidth = lw;
+        c.lineWidth = Math.max(1.5, 8 * (1 - t));
         c.beginPath();
         c.moveTo(lean * 60 * t - 2, ty);
         c.lineTo(lean * 60 * t + 2, ty);
         c.stroke();
+      }
+      c.strokeStyle = '#0d0a12';
+
+      // crown — drooping fronds with real leaves
+      const sway = Math.sin(time * 0.5 + x) * 3;
+      const fronds = 9;
+      for (let i = 0; i < fronds; i++) {
+        const ang = -Math.PI + (i / (fronds - 1)) * Math.PI + Math.sin(time * 0.5 + i) * 0.03;
+        const len = 88 + rand(i + 9) * 30;
+        const droop = 26 + rand(i + 33) * 18;
+        drawFrond(c, topX, topY, ang, len, droop, sway + rand(i + 7) * 5, i + 1);
       }
       c.restore();
     };
@@ -148,22 +191,60 @@ export const GoaBeach: React.FC<GoaBeachProps> = ({ dim = 0, className }) => {
       // ── Sun glow ──
       const sunX = W * (0.5 + px * 0.01);
       const sunY = horizon - H * 0.075;
-      const glowR = Math.min(W, H) * 0.34;
-      const sunR = Math.min(W, H) * 0.052;
+      const glowR = Math.min(W, H) * 0.38;
+      const sunR = Math.min(W, H) * 0.05;
       const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, glowR);
-      sunGrad.addColorStop(0, 'rgba(255,214,150,0.95)');
-      sunGrad.addColorStop(0.18, 'rgba(255,168,90,0.55)');
-      sunGrad.addColorStop(0.55, 'rgba(255,120,80,0.12)');
+      sunGrad.addColorStop(0, 'rgba(255,224,165,0.85)');
+      sunGrad.addColorStop(0.12, 'rgba(255,196,120,0.45)');
+      sunGrad.addColorStop(0.3, 'rgba(255,168,95,0.2)');
+      sunGrad.addColorStop(0.55, 'rgba(255,140,85,0.08)');
+      sunGrad.addColorStop(0.8, 'rgba(255,130,80,0.03)');
       sunGrad.addColorStop(1, 'rgba(255,120,80,0)');
       ctx.fillStyle = sunGrad;
       ctx.beginPath();
       ctx.arc(sunX, sunY, glowR, 0, Math.PI * 2);
       ctx.fill();
 
+      // soft god rays fanning up from the sun
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 8; i++) {
+        const rayAngle = -Math.PI / 2 + (i - 3.5) * 0.12 + rand(i + 50) * 0.03;
+        const rayLen = glowR * (1.15 + rand(i + 90) * 0.5);
+        const halfWidth = glowR * 0.14;
+        const dx = Math.cos(rayAngle);
+        const dy = Math.sin(rayAngle);
+        const grad = ctx.createLinearGradient(
+          sunX + dx * sunR * 0.6,
+          sunY + dy * sunR * 0.6,
+          sunX + dx * rayLen,
+          sunY + dy * rayLen
+        );
+        grad.addColorStop(0, 'rgba(255,216,150,0.22)');
+        grad.addColorStop(1, 'rgba(255,216,150,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(sunX + dx * sunR * 0.6, sunY + dy * sunR * 0.6);
+        ctx.lineTo(
+          sunX + dx * rayLen - Math.cos(rayAngle + Math.PI / 2) * halfWidth,
+          sunY + dy * rayLen - Math.sin(rayAngle + Math.PI / 2) * halfWidth
+        );
+        ctx.lineTo(
+          sunX + dx * rayLen + Math.cos(rayAngle + Math.PI / 2) * halfWidth,
+          sunY + dy * rayLen + Math.sin(rayAngle + Math.PI / 2) * halfWidth
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // sun core with feathered edge
       const sunCore = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
-      sunCore.addColorStop(0, '#fff2d6');
-      sunCore.addColorStop(0.7, '#ffd9a0');
-      sunCore.addColorStop(1, '#ffb26b');
+      sunCore.addColorStop(0, '#fff8e8');
+      sunCore.addColorStop(0.4, '#ffe2ac');
+      sunCore.addColorStop(0.72, 'rgba(255,206,140,0.85)');
+      sunCore.addColorStop(0.9, 'rgba(255,190,120,0.32)');
+      sunCore.addColorStop(1, 'rgba(255,180,110,0)');
       ctx.fillStyle = sunCore;
       ctx.beginPath();
       ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);

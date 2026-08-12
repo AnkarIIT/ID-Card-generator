@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CardConfig, FormatType, CardSide, FrameStyle, ThemeStyle, PhotoTransform, BuilderData } from './types';
 import { Hero } from './components/experience/Hero';
-import { GoaBeach } from './components/experience/GoaBeach';
 import { PhotoStep } from './components/experience/PhotoStep';
 import { LoreStep } from './components/experience/LoreStep';
 import { VibeStep } from './components/experience/VibeStep';
 import { LiveCard } from './components/experience/LiveCard';
 import { FinalOverlay } from './components/experience/FinalOverlay';
-import { PhotoAdjuster } from './components/PhotoAdjuster';
 import { loadImage } from './utils/heicConverter';
-import { ArrowDown, Rocket, SlidersHorizontal } from 'lucide-react';
+import { ArrowDown, Rocket } from 'lucide-react';
 
 const EMPTY_BUILDER: BuilderData = {
   name: '',
@@ -107,8 +105,6 @@ export default function App() {
       <section id="builder-top" className="relative">
         {/* arrival band: the beach darkening into the UI */}
         <div className="relative h-[46vh] min-h-[320px] w-full overflow-hidden">
-          <GoaBeach dim={0.55} className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050807] via-[#050807]/45 to-[#050807]" />
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
             <motion.p
               className="mono-tag text-[#f3c85c]"
@@ -117,7 +113,7 @@ export default function App() {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              GOA / 2026
+              GOA IS ONNNNN!
             </motion.p>
             <motion.h2
               className="font-display mt-2 text-[clamp(2rem,7vw,4.5rem)] leading-none text-[#f7eec8] glow-gold"
@@ -165,6 +161,9 @@ export default function App() {
                 <PhotoStep
                   hasPhoto={!!photoDataUrl}
                   photoName={photoName}
+                  photoDataUrl={photoDataUrl}
+                  transform={photoTransform}
+                  onChangeTransform={setPhotoTransform}
                   onPhotoLoaded={handlePhotoLoaded}
                   onClear={handleClearPhoto}
                 />
@@ -194,26 +193,6 @@ export default function App() {
                   hasPhoto={!!photoDataUrl}
                 />
               </StepSection>
-
-              {/* fine-tune (collapsible) */}
-              {photoDataUrl && (
-                <details className="group rounded-2xl border border-[#d4af37]/20 bg-[#071712]/40">
-                  <summary className="mono-tag flex list-none cursor-pointer items-center justify-between px-5 py-4 text-[#a2b8ad] transition-colors hover:text-[#f3c85c]">
-                    <span className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
-                      FINE-TUNE POSITION
-                    </span>
-                    <span className="text-[#3f5a50]">OPTIONAL</span>
-                  </summary>
-                  <div className="px-5 pb-5">
-                    <PhotoAdjuster
-                      transform={photoTransform}
-                      onChangeTransform={setPhotoTransform}
-                      photoDataUrl={photoDataUrl}
-                    />
-                  </div>
-                </details>
-              )}
 
               {/* READY TO SHIP */}
               <section className="relative overflow-hidden rounded-2xl border border-[#d4af37]/30 bg-gradient-to-br from-[#0b211a] via-[#071712] to-[#1a0d14] px-6 py-12 text-center">
@@ -253,7 +232,7 @@ export default function App() {
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-display text-sm tracking-wider text-[#a2b8ad]">LIVE ID</span>
                   <span className="mono-tag text-[#3f5a50]">
-                    {builder.name ? builder.name.toUpperCase() : 'UNNAMED BUILDER'}
+                    {builder.name ? builder.name.toUpperCase() : ''}
                   </span>
                 </div>
 
@@ -296,7 +275,21 @@ export default function App() {
         </main>
       </section>
 
-      {/* ── 03 FINAL STAGE ── */}
+      {/* ── 03 FOOTER ── */}
+      <footer className="border-t border-[#d4af37]/20 bg-[#050807]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-center sm:flex-row sm:px-8 sm:text-left">
+          <span className="mono-tag text-[#a2b8ad]">
+            SYS / HHGOA26
+          </span>
+          <span className="mono-tag text-[#a2b8ad]">
+            Made with <span className="text-[#ff5c8a]">❤️</span> by{' '}
+            <span className="text-[#f3c85c]">Baddie Detectors</span>
+          </span>
+          <span className="mono-tag text-[#3f5a50]">28 — 31 OCT · GOA, INDIA</span>
+        </div>
+      </footer>
+
+      {/* ── 04 FINAL STAGE ── */}
       <AnimatePresence>
         {finalOpen && (
           <FinalOverlay

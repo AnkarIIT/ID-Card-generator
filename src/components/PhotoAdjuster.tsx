@@ -32,30 +32,32 @@ export const PhotoAdjuster: React.FC<PhotoAdjusterProps> = ({
   };
 
   return (
-    <div className="w-full space-y-3.5 rounded-xl border border-[#d4af37]/30 bg-[#0c221a]/80 p-4">
+    <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
-        <label className="font-mono text-[11px] font-semibold text-[#f7eec8] tracking-wider uppercase flex items-center gap-1.5">
-          <Move className="h-3.5 w-3.5 text-[#f3c85c]" />
-          <span>Adjust &amp; Position Photo</span>
+        <label className="mono-tag flex items-center gap-2 text-[#a2b8ad]">
+          <span className="text-[#f3c85c]">
+            <Move className="h-3.5 w-3.5" />
+          </span>
+          ADJUST &amp; POSITION PHOTO
         </label>
         <button
           type="button"
           onClick={handleReset}
-          className="flex items-center gap-1 text-[#a2b8ad] hover:text-[#f3c85c] text-xs font-medium transition-colors cursor-pointer"
+          className="mono-tag flex items-center gap-1.5 text-[#a2b8ad] transition-colors hover:text-[#f3c85c] cursor-pointer"
         >
           <RefreshCw className="h-3 w-3" />
-          <span>Reset</span>
+          RESET
         </button>
       </div>
 
       {/* Zoom Scale Slider */}
-      <div className="space-y-1">
+      <div>
         <div className="flex justify-between text-xs text-[#a2b8ad] font-medium">
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <ZoomIn className="h-3.5 w-3.5 text-[#f3c85c]" />
             <span>Zoom / Size</span>
           </span>
-          <span className="text-[#f3c85c] font-mono text-[11px] font-bold">{transform.scale.toFixed(2)}x</span>
+          <span className="font-mono text-[11px] font-bold text-[#f3c85c]">{transform.scale.toFixed(2)}x</span>
         </div>
         <input
           type="range"
@@ -72,10 +74,10 @@ export const PhotoAdjuster: React.FC<PhotoAdjusterProps> = ({
 
       {/* Position Offset X & Y */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
+        <div>
           <div className="flex justify-between text-[11px] text-[#a2b8ad] font-medium">
             <span>Pan Horizontal</span>
-            <span className="text-[#f7eec8] font-mono">{transform.x}px</span>
+            <span className="font-mono text-[#f7eec8]">{transform.x}px</span>
           </div>
           <input
             type="range"
@@ -90,10 +92,10 @@ export const PhotoAdjuster: React.FC<PhotoAdjusterProps> = ({
           />
         </div>
 
-        <div className="space-y-1">
+        <div>
           <div className="flex justify-between text-[11px] text-[#a2b8ad] font-medium">
             <span>Pan Vertical</span>
-            <span className="text-[#f7eec8] font-mono">{transform.y}px</span>
+            <span className="font-mono text-[#f7eec8]">{transform.y}px</span>
           </div>
           <input
             type="range"
@@ -110,13 +112,13 @@ export const PhotoAdjuster: React.FC<PhotoAdjusterProps> = ({
       </div>
 
       {/* Rotation Slider */}
-      <div className="space-y-1">
+      <div>
         <div className="flex justify-between text-[11px] text-[#a2b8ad] font-medium">
-          <span className="flex items-center gap-1">
-            <RotateCw className="h-3.5 w-3.5 text-[#a2b8ad]" />
+          <span className="flex items-center gap-1.5">
+            <RotateCw className="h-3.5 w-3.5 text-[#f3c85c]" />
             <span>Rotation</span>
           </span>
-          <span className="text-[#f7eec8] font-mono">{transform.rotation}°</span>
+          <span className="font-mono text-[#f7eec8]">{transform.rotation}°</span>
         </div>
         <input
           type="range"
@@ -132,12 +134,14 @@ export const PhotoAdjuster: React.FC<PhotoAdjusterProps> = ({
       </div>
 
       {/* Photo Filters */}
-      <div className="space-y-1.5 pt-1">
-        <label className="text-[11px] text-[#a2b8ad] font-medium flex items-center gap-1">
-          <Sparkles className="h-3.5 w-3.5 text-[#f3c85c]" />
-          <span>Color Filter</span>
+      <div className="space-y-2">
+        <label className="mono-tag flex items-center gap-2 text-[#a2b8ad]">
+          <span className="text-[#f3c85c]">
+            <Sparkles className="h-3.5 w-3.5" />
+          </span>
+          COLOR FILTER
         </label>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-2">
           {FILTERS.map((f) => (
             <button
               key={f.id}
