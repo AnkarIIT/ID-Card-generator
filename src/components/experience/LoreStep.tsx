@@ -140,7 +140,7 @@ export const LoreStep: React.FC<LoreStepProps> = ({ builder, onChangeBuilder }) 
 
             <div className="lore-field relative">
               <label className="mono-tag mb-1 flex items-center gap-2 text-[#a2b8ad]">
-                <Flame className="h-3.5 w-3.5 text-[#f3c85c]" />POWERED BY
+                <Flame className="h-3.5 w-3.5 text-[#f3c85c]" />Team Name
               </label>
               <input
                 className="lore-input"
